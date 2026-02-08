@@ -1,6 +1,8 @@
 
 // ... (imports and setup remain same)
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' }); // Try to load .env.local for local dev convenience if .env is missing
+require('dotenv').config(); // Standard .env load
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -18,24 +20,29 @@ const ordersController = require('./controllers/orders');
 const app = express();
 
 // --- CONFIGURATION ---
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const HOST = '0.0.0.0'; 
-const PUBLIC_IP = '47.119.161.66';
+const PUBLIC_IP = process.env.PUBLIC_IP || '47.119.161.66';
 
 const SELLFOX_CONFIG = {
-    clientId: process.env.SELLFOX_CLIENT_ID || '368081',
-    clientSecret: process.env.SELLFOX_CLIENT_SECRET || '3f543f96-0ef7-42a8-bca9-26885f6a5d77',
+    clientId: process.env.SELLFOX_CLIENT_ID,
+    clientSecret: process.env.SELLFOX_CLIENT_SECRET,
     baseUrl: 'https://openapi.sellfox.com'
 };
 
+// Security Check
+if (!SELLFOX_CONFIG.clientId || !SELLFOX_CONFIG.clientSecret) {
+    console.warn("⚠️  WARNING: Sellfox credentials missing in environment variables.");
+}
+
 const CAIGOU_CONFIG = {
     baseUrl: 'https://test.caigoumail.com', 
-    username: 'pp_test', 
-    password: '123456', 
+    username: process.env.CAIGOU_USERNAME || 'pp_test', 
+    password: process.env.CAIGOU_PASSWORD, 
     notifyUrl: `http://${PUBLIC_IP}:${PORT}/api/payment/callback` 
 };
 
-// ... (MARKETPLACE_OFFSETS, tokenCache, fileCache, DB_CONFIG remain same) ...
+// ... (MARKETPLACE_OFFSETS, tokenCache, fileCache remain same) ...
 const MARKETPLACE_OFFSETS = {
     'ATVPDKIKX0DER': -7, // US (PST)
     'A2EUQ1WTGCTBG2': -7, // CA
@@ -70,7 +77,7 @@ const fileCache = new Map();
 const DB_CONFIG = {
     host: process.env.DB_HOST || '127.0.0.1', 
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'Chenshuyao1212',
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'tiger_erp',
     waitForConnections: true,
     connectionLimit: 10,
@@ -80,6 +87,11 @@ const DB_CONFIG = {
     keepAliveInitialDelay: 0,
     charset: 'utf8mb4' 
 };
+
+// Database Connection Security Check
+if (!DB_CONFIG.password) {
+    console.warn("⚠️  WARNING: Database password missing in environment variables.");
+}
 
 const pool = mysql.createPool(DB_CONFIG);
 
@@ -319,6 +331,8 @@ async function getSellfoxToken() {
     const now = Date.now();
     if (tokenCache.sellfox.accessToken && tokenCache.sellfox.expiresAt > now + 300000) return tokenCache.sellfox.accessToken;
     try {
+        if (!SELLFOX_CONFIG.clientId || !SELLFOX_CONFIG.clientSecret) throw new Error("Sellfox credentials missing");
+        
         const url = `${SELLFOX_CONFIG.baseUrl}/api/oauth/v2/token.json`;
         const response = await axios.get(url, { params: { client_id: SELLFOX_CONFIG.clientId, client_secret: SELLFOX_CONFIG.clientSecret, grant_type: 'client_credentials' }, timeout: 5000 });
         if (response.data.code === 0 && response.data.data) {
@@ -387,6 +401,8 @@ async function getCaiGouToken() {
     const now = Date.now();
     if (tokenCache.caigou.accessToken && tokenCache.caigou.expiresAt > now + 60000) return tokenCache.caigou.accessToken;
     try {
+        if (!CAIGOU_CONFIG.password) throw new Error("CaiGou credentials missing");
+
         const url = `${CAIGOU_CONFIG.baseUrl}/api/user/login`;
         const response = await axios.post(url, { 
             username: CAIGOU_CONFIG.username, 

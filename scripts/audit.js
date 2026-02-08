@@ -1,4 +1,5 @@
 
+require('dotenv').config({ path: '.env.local' }); // Load local overrides first
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 const axios = require('axios');
@@ -6,21 +7,27 @@ const crypto = require('crypto');
 
 // --- CONFIGURATION COPY ---
 const SELLFOX_CONFIG = {
-    clientId: process.env.SELLFOX_CLIENT_ID || '368081',
-    clientSecret: process.env.SELLFOX_CLIENT_SECRET || '3f543f96-0ef7-42a8-bca9-26885f6a5d77',
+    clientId: process.env.SELLFOX_CLIENT_ID,
+    clientSecret: process.env.SELLFOX_CLIENT_SECRET,
     baseUrl: 'https://openapi.sellfox.com'
 };
 
 const DB_CONFIG = {
     host: process.env.DB_HOST || '127.0.0.1', 
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'Chenshuyao1212',
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'tiger_erp',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     charset: 'utf8mb4' 
 };
+
+// Security Check
+if (!SELLFOX_CONFIG.clientSecret || !DB_CONFIG.password) {
+    console.error("❌ Error: Missing credentials in environment variables (SELLFOX_CLIENT_SECRET or DB_PASSWORD).");
+    process.exit(1);
+}
 
 const pool = mysql.createPool(DB_CONFIG);
 let tokenCache = { accessToken: null, expiresAt: 0 };

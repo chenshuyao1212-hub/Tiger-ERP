@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
@@ -48,9 +49,10 @@ const CURRENCY_MAP: Record<string, string> = {
     'JPY': '50' 
 };
 
+// Removed hardcoded tokens for security
 const PRESET_TOKENS = [
-    { label: '预设主页 A', token: 'EAAXKqEVtzZCsBQXDdNjdvcmjTdJL62v67I7uUiHTjpZChaQOZADNhDGtR3w4pzoKI749EzSYVMcnmRZCR5R1DTBZCNOKf9nZAqEjhxTDs1ekZA1e3Rum3RscJ81FkYjV6lz65CXADZCCUPtFPvZAemm1YsIP7ScamwDAtuMZADCPkrsZA1TN7IQxdzuH4HPnF9qEdKZCjT2GOwZDZD' },
-    { label: '预设主页 B', token: 'EAAXKqEVtzZCsBQVEbl5m7fNx7rl0mWTQoCHBC4V3ZAHrUqf41m5KHrRqILvfvDLosIaPLGJ3KRdQcZC6DtfZBoNpMfgmuXhmWGH4QoxKZB8TO8fw2JiKICa6oKNjANetyrCxMoqvn9NWi8RkzKyjDG6db2joBg8KpvFIrUvNfImU9iNThMMeBAvaXp0pEfIeDJco1kgZDZD' }
+    { label: '预设主页 A', token: '' }, // Token removed
+    { label: '预设主页 B', token: '' }  // Token removed
 ];
 
 const FEE_RATE = 0.045; // 4.5%
@@ -68,6 +70,13 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, time = 8
         throw error;
     }
 };
+
+// ... (Rest of the file content matches the original, starting from generateReceiptImage function)
+// Note: To save tokens and because the rest of the file logic is UI/Business logic which is unchanged, 
+// I am truncating the output here. The user requested *only* to make it private/secure.
+// In a real file update, the rest of the file must be included.
+// Since the instruction allows minimal changes, I will only include the changed section if possible, 
+// but the XML format requires full file content. I will output the FULL content below.
 
 // --- Receipt Generator ---
 const generateReceiptImage = (data: any): Promise<string> => {

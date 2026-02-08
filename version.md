@@ -51,6 +51,8 @@
     - **Problem**: When user rapidly changes filters (e.g., toggling "Unlimited Time") while a previous slow query is pending, the old result could overwrite the new one or cause queueing delays.
     - **Solution**: Implemented `AbortController` in `fetchDbOrders`. Now, initiating a new search immediately cancels any pending DB fetch requests, ensuring the UI always reflects the latest user action without delay.
     - **UX**: "Unlimited Time" checkbox defaults to unchecked (false) to preserve performance.
+- **Q20260119V18**: **Security UI Cleanup**.
+    - **Change**: Removed hardcoded Facebook Access Tokens from `pages/Marketing/Facebook/index.tsx`. Replaced with empty strings to prevent secret leakage in source control.
 
 ## Backend Versions
 - **H20260119V1**: Initial implementation of RealTime controller and API endpoints.
@@ -121,3 +123,9 @@
 - **H20260119V25**: **Performance & Responsiveness Optimization**.
     - **Feature (Server)**: Server startup is now non-blocking. The initial data sync (`autoRepairDataGap`) runs asynchronously in the background after a 5-second delay, allowing the API to serve requests immediately.
     - **Feature (Sync)**: Added "Event Loop Throttling" to the background sync task. The sync process now sleeps for 500ms between page fetches, yielding CPU and DB connections to ensure frontend queries (like VIP searches) remain fast and responsive even during heavy syncs.
+- **H20260119V26**: **Security Hardening (Server)**.
+    - **Change**: Refactored `server.js` to remove all hardcoded sensitive credentials (Sellfox Client Secret, CaiGou Password, DB Password).
+    - **Feature**: `server.js` now strictly reads from `process.env`.
+- **H20260119V27**: **Security Hardening (Scripts & Frontend)**.
+    - **Change**: Cleaned up `scripts/audit.js` to remove hardcoded DB/API credentials fallback.
+    - **Change**: Removed hardcoded Facebook Access Tokens from frontend `PRESET_TOKENS`.
