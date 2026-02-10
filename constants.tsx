@@ -506,7 +506,7 @@ export const MAIN_MENU: MenuItem[] = [
         children: [
           { id: 'sales_stat', label: '销量统计' },
           { id: 'shop_perf_day', label: '店铺日报', isNew: true },
-          { id: 'sea_asst', label: '海卖助手' },
+          { id: 'real_time', label: '海卖助手' },
           { id: 'fest_screen', label: '节日大屏' },
         ]
       },
