@@ -228,35 +228,35 @@ interface ColumnConfig {
 const INITIAL_COL_CONFIG: ColumnConfig[] = [
   // 基础信息 (Pinned Left)
   { id: 'img', label: '图片', group: '基础信息', visible: true, pinned: true, width: 60 },
-  { id: 'store', label: '店铺/站点', group: '基础信息', visible: true, pinned: true, width: 100 },
-  { id: 'title_asin', label: '标题/ASIN', group: '基础信息', visible: true, pinned: true, width: 220 },
-  { id: 'msku_attr', label: 'MSKU/属性', group: '基础信息', visible: true, pinned: false, width: 150 },
+  { id: 'store', label: '店铺/站点', group: '基础信息', visible: true, pinned: true, width: 110 },
+  { id: 'title_asin', label: '标题/ASIN', group: '基础信息', visible: true, pinned: true, width: 280 },
+  { id: 'msku_attr', label: 'MSKU/属性', group: '基础信息', visible: true, pinned: false, width: 180 },
   
   // 站点今日 (实时) - Orange
-  { id: 'todaySales', label: '销量', group: '站点今日 (实时)', visible: true, pinned: false, width: 80, sortable: true },
-  { id: 'todayOrders', label: '订单量', group: '站点今日 (实时)', visible: true, pinned: false, width: 80, sortable: true },
-  { id: 'todayAmount', label: '销售额', group: '站点今日 (实时)', visible: true, pinned: false, width: 100, sortable: true },
+  { id: 'todaySales', label: '销量', group: '站点今日 (实时)', visible: true, pinned: false, width: 90, sortable: true },
+  { id: 'todayOrders', label: '订单量', group: '站点今日 (实时)', visible: true, pinned: false, width: 90, sortable: true },
+  { id: 'todayAmount', label: '销售额', group: '站点今日 (实时)', visible: true, pinned: false, width: 120, sortable: true },
   
   // 站点昨日 - Red
-  { id: 'yesterdaySales', label: '销量', group: '站点昨日', visible: true, pinned: false, width: 80, sortable: true },
-  { id: 'yesterdayOrders', label: '订单量', group: '站点昨日', visible: true, pinned: false, width: 80 },
-  { id: 'yesterdayAmount', label: '销售额', group: '站点昨日', visible: true, pinned: false, width: 100 },
+  { id: 'yesterdaySales', label: '销量', group: '站点昨日', visible: true, pinned: false, width: 90, sortable: true },
+  { id: 'yesterdayOrders', label: '订单量', group: '站点昨日', visible: true, pinned: false, width: 90 },
+  { id: 'yesterdayAmount', label: '销售额', group: '站点昨日', visible: true, pinned: false, width: 120 },
 
   // FBA库存 - Blue
-  { id: 'fbaAvailable', label: 'FBA可售', group: 'FBA库存', visible: true, pinned: false, width: 80 },
-  { id: 'fbaReserved', label: 'FBA预留', group: 'FBA库存', visible: true, pinned: false, width: 80 },
-  { id: 'fbaInbound', label: 'FBA在途', group: 'FBA库存', visible: true, pinned: false, width: 80 },
-  { id: 'fbaDays', label: '可售天数', group: 'FBA库存', visible: true, pinned: false, width: 80 },
+  { id: 'fbaAvailable', label: 'FBA可售', group: 'FBA库存', visible: true, pinned: false, width: 100 },
+  { id: 'fbaReserved', label: 'FBA预留', group: 'FBA库存', visible: true, pinned: false, width: 100 },
+  { id: 'fbaInbound', label: 'FBA在途', group: 'FBA库存', visible: true, pinned: false, width: 100 },
+  { id: 'fbaDays', label: '可售天数', group: 'FBA库存', visible: true, pinned: false, width: 120 },
 
   // 上周同日 - Purple
-  { id: 'lastWeekSales', label: '销量', group: '上周同日', visible: true, pinned: false, width: 80, sortable: true },
-  { id: 'lastWeekOrders', label: '订单量', group: '上周同日', visible: true, pinned: false, width: 80 },
-  { id: 'lastWeekAmount', label: '销售额', group: '上周同日', visible: true, pinned: false, width: 100 },
+  { id: 'lastWeekSales', label: '销量', group: '上周同日', visible: true, pinned: false, width: 90, sortable: true },
+  { id: 'lastWeekOrders', label: '订单量', group: '上周同日', visible: true, pinned: false, width: 90 },
+  { id: 'lastWeekAmount', label: '销售额', group: '上周同日', visible: true, pinned: false, width: 120 },
 
   // 去年同日 - Green
-  { id: 'lastYearSales', label: '销量', group: '去年同日', visible: true, pinned: false, width: 80, sortable: true },
-  { id: 'lastYearOrders', label: '订单量', group: '去年同日', visible: true, pinned: false, width: 80 },
-  { id: 'lastYearAmount', label: '销售额', group: '去年同日', visible: true, pinned: false, width: 100 },
+  { id: 'lastYearSales', label: '销量', group: '去年同日', visible: true, pinned: false, width: 90, sortable: true },
+  { id: 'lastYearOrders', label: '订单量', group: '去年同日', visible: true, pinned: false, width: 90 },
+  { id: 'lastYearAmount', label: '销售额', group: '去年同日', visible: true, pinned: false, width: 120 },
 ];
 
 const INITIAL_GROUP_ORDER = ['基础信息', '站点今日 (实时)', '站点昨日', 'FBA库存', '上周同日', '去年同日'];
@@ -516,11 +516,10 @@ export const RealTime = () => {
   };
 
   const tableWidth = useMemo(() => {
-      const actionsWidth = 60;
       const colsWidth = columns.filter(c => c.visible).reduce((acc, col) => {
           return acc + (colWidths[col.id] || col.width);
       }, 0);
-      return CHECKBOX_WIDTH + actionsWidth + colsWidth;
+      return CHECKBOX_WIDTH + colsWidth;
   }, [columns, colWidths]);
 
   // Total Calculation Helper
@@ -684,8 +683,6 @@ export const RealTime = () => {
 
                               {/* Unpinned Groups (Row 1) */}
                               {unpinnedGroups.map(group => <th key={group.name} colSpan={group.columns.length} className={`text-center border-r border-b border-gray-200 text-[11px] whitespace-nowrap font-bold border-t-[3px] ${getGroupStyle(group.name)}`}>{group.name}</th>)}
-                              
-                              <th rowSpan={2} className="text-center sticky right-0 z-[60] bg-gray-50 border-l border-b border-gray-200 w-16 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap" style={{ width: 60 }}>操作</th>
                           </tr>
 
                           {/* Metric Headers (Row 2) */}
@@ -694,7 +691,7 @@ export const RealTime = () => {
                                   group.columns.map((col, cIdx) => {
                                       const width = colWidths[col.id] || col.width;
                                       return (
-                                          <ResizableHeader key={col.id} width={width} onResize={(w) => handleColumnResize(col.id, w)} onResizeEnd={handleColumnResizeEnd} className={`sticky z-50 px-1 text-right border-r border-b border-gray-200 font-normal whitespace-nowrap bg-white text-gray-600`} style={{ left: getPinnedGroupColLeft(gIdx, cIdx) }} sortKey={col.sortable ? col.id : undefined} currentSort={sortConfig} onSort={handleSort}>{col.label}</ResizableHeader>
+                                          <ResizableHeader key={col.id} width={width} onResize={(w) => handleColumnResize(col.id, w)} onResizeEnd={handleColumnResizeEnd} className={`sticky z-50 px-3 text-right border-r border-b border-gray-200 font-normal whitespace-nowrap bg-white text-gray-600`} style={{ left: getPinnedGroupColLeft(gIdx, cIdx) }} sortKey={col.sortable ? col.id : undefined} currentSort={sortConfig} onSort={handleSort}>{col.label}</ResizableHeader>
                                       );
                                   })
                               ))}
@@ -702,7 +699,7 @@ export const RealTime = () => {
                                   group.columns.map(col => {
                                       const width = colWidths[col.id] || col.width;
                                       return (
-                                          <ResizableHeader key={col.id} width={width} onResize={(w) => handleColumnResize(col.id, w)} onResizeEnd={handleColumnResizeEnd} className={`px-1 text-right border-r border-b border-gray-200 font-normal whitespace-nowrap bg-white text-gray-600`} sortKey={col.sortable ? col.id : undefined} currentSort={sortConfig} onSort={handleSort}>{col.label}</ResizableHeader>
+                                          <ResizableHeader key={col.id} width={width} onResize={(w) => handleColumnResize(col.id, w)} onResizeEnd={handleColumnResizeEnd} className={`px-3 text-right border-r border-b border-gray-200 font-normal whitespace-nowrap bg-white text-gray-600`} sortKey={col.sortable ? col.id : undefined} currentSort={sortConfig} onSort={handleSort}>{col.label}</ResizableHeader>
                                       );
                                   })
                               ))}
@@ -720,7 +717,7 @@ export const RealTime = () => {
                                       
                                       {/* Pinned Individual Cells */}
                                       {pinnedColumns.map((col, cIdx) => (
-                                          <td key={col.id} className={`px-2 py-1 sticky z-30 bg-white group-hover:bg-blue-50 border-r border-b border-gray-100`} style={{ left: getStickyLeft('col', cIdx) }}>
+                                          <td key={col.id} className={`px-3 py-1 sticky z-30 bg-white group-hover:bg-blue-50 border-r border-b border-gray-100`} style={{ left: getStickyLeft('col', cIdx) }}>
                                               {COLUMN_RENDERERS[col.id] ? COLUMN_RENDERERS[col.id](item) : item[col.id]}
                                           </td>
                                       ))}
@@ -731,7 +728,7 @@ export const RealTime = () => {
                                               const isCurrency = col.id.includes('Amount');
                                               const colorClass = col.id.includes('Sales') ? 'text-gray-900 font-bold' : (isCurrency ? 'text-orange-600' : 'text-gray-600');
                                               return (
-                                                  <td key={col.id} className={`px-1 text-right sticky z-30 bg-white group-hover:bg-blue-50 border-r border-b border-gray-100 tabular-nums`} style={{ left: getPinnedGroupColLeft(gIdx, cIdx) }}>
+                                                  <td key={col.id} className={`px-3 text-right sticky z-30 bg-white group-hover:bg-blue-50 border-r border-b border-gray-100 tabular-nums`} style={{ left: getPinnedGroupColLeft(gIdx, cIdx) }}>
                                                       {renderNumeric(item[col.id], isCurrency ? 'currency' : 'int', colorClass)}
                                                   </td>
                                               );
@@ -740,7 +737,7 @@ export const RealTime = () => {
 
                                       {/* Unpinned Individual Cells */}
                                       {unpinnedBasicInfo.map(col => (
-                                          <td key={col.id} className="px-2 border-r border-b border-gray-100">
+                                          <td key={col.id} className="px-3 border-r border-b border-gray-100">
                                               {COLUMN_RENDERERS[col.id] ? COLUMN_RENDERERS[col.id](item) : item[col.id]}
                                           </td>
                                       ))}
@@ -751,16 +748,12 @@ export const RealTime = () => {
                                               const isCurrency = col.id.includes('Amount');
                                               const colorClass = col.id.includes('Sales') ? 'text-gray-900 font-bold' : (isCurrency ? 'text-orange-600' : 'text-gray-600');
                                               return (
-                                                  <td key={col.id} className="px-1 text-right border-r border-b border-gray-100 tabular-nums">
+                                                  <td key={col.id} className="px-3 text-right border-r border-b border-gray-100 tabular-nums">
                                                       {renderNumeric(item[col.id], isCurrency ? 'currency' : 'int', colorClass)}
                                                   </td>
                                               );
                                           })
                                       ))}
-
-                                      <td className="text-center sticky right-0 z-30 bg-white group-hover:bg-blue-50 border-l border-b border-gray-100 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                          <button className="text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-100/50"><MoreHorizontal size={14} /></button>
-                                      </td>
                                   </tr>
                               ))
                           )}
@@ -771,7 +764,7 @@ export const RealTime = () => {
                           <tr className="h-10 bg-white">
                               <td className="sticky left-0 bg-white z-50 border-r border-gray-100"></td>
                               {pinnedColumns.map((col, cIdx) => (
-                                  <td key={col.id} className={`sticky bg-white z-50 border-r border-gray-100 px-2 text-center`} style={{ left: getStickyLeft('col', cIdx) }}>
+                                  <td key={col.id} className={`sticky bg-white z-50 border-r border-gray-100 px-3 text-center`} style={{ left: getStickyLeft('col', cIdx) }}>
                                       {col.id === 'store' ? '本页汇总' : ''}
                                   </td>
                               ))}
@@ -779,7 +772,7 @@ export const RealTime = () => {
                                   group.columns.map((col, cIdx) => {
                                       const isCurrency = col.id.includes('Amount');
                                       return (
-                                          <td key={col.id} className={`sticky bg-blue-50 z-50 border-r border-gray-100 text-right px-1`} style={{ left: getPinnedGroupColLeft(gIdx, cIdx) }}>
+                                          <td key={col.id} className={`sticky bg-blue-50 z-50 border-r border-gray-100 text-right px-3`} style={{ left: getPinnedGroupColLeft(gIdx, cIdx) }}>
                                               {renderNumeric(calcTotal(col.id), isCurrency ? 'currency' : 'int')}
                                           </td>
                                       );
@@ -790,13 +783,12 @@ export const RealTime = () => {
                                   group.columns.map(col => {
                                       const isCurrency = col.id.includes('Amount');
                                       return (
-                                          <td key={col.id} className="px-1 text-right border-r border-gray-100">
+                                          <td key={col.id} className="px-3 text-right border-r border-gray-100">
                                               {renderNumeric(calcTotal(col.id), isCurrency ? 'currency' : 'int')}
                                           </td>
                                       );
                                   })
                               ))}
-                              <td className="sticky right-0 bg-white z-50 border-l border-gray-100 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]"></td>
                           </tr>
                       </tfoot>
                   </table>
