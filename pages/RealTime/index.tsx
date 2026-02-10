@@ -11,27 +11,48 @@ import {
   ArrowUp,
   ArrowDown,
   MoreHorizontal,
-  Filter,
   LayoutGrid,
-  Download,
-  X,
-  Info,
-  Check,
-  GripVertical,
-  Pin,
-  ArrowUpToLine,
-  BarChart2,
-  Tag,
-  User,
   FilterX,
-  CloudDownload
+  CloudDownload,
+  Filter,
+  BarChart2,
+  User,
+  // Fix: Import Download icon
+  Download
 } from 'lucide-react';
 import { 
   SiteFilterDropdown, 
   ShopFilterDropdown, 
   SalespersonFilterDropdown, 
-  MultiSelectDropdown 
+  DeliveryMethodFilterDropdown
 } from '../../components/Filters';
+import { ProductTagFilter } from '../../components/ProductTagFilter';
+
+// --- Reusable Simple Dropdown for Currency ---
+const SimpleSelect = ({ value, onChange, options, width }: { value: string, onChange: (val: string) => void, options: string[], width: string }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const handler = (e: MouseEvent) => { if(ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+    return (
+        <div ref={ref} className="relative" style={{ width }}>
+            <div onClick={() => setIsOpen(!isOpen)} className={`flex items-center justify-between h-8 px-2 border rounded-sm transition-colors text-xs bg-white cursor-pointer select-none ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
+                <span className="truncate">{value || options[0]}</span>
+                <ChevronDown size={12} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
+            </div>
+            {isOpen && (
+                <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 shadow-xl rounded z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                    {options.map(opt => (
+                        <div key={opt} onClick={() => { onChange(opt); setIsOpen(false); }} className={`px-3 py-2 cursor-pointer text-xs hover:bg-gray-50 transition-colors ${value === opt ? 'text-blue-600 bg-blue-50' : 'text-gray-700'}`}>{opt}</div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // --- Resizable Header Component ---
 interface ResizableHeaderProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
@@ -145,50 +166,24 @@ const INITIAL_COL_CONFIG: ColumnConfig[] = [
   { id: 'fbaAvailable', label: 'FBA可售', group: 'FBA库存', visible: true, pinned: false },
   { id: 'fbaReserved', label: 'FBA预留', group: 'FBA库存', visible: true, pinned: false },
   { id: 'fbaInbound', label: 'FBA在途', group: 'FBA库存', visible: true, pinned: false },
-  { id: 'awdInv', label: 'AWD库存', group: 'FBA库存', visible: false, pinned: false },
-  { id: 'awdInbound', label: 'AWD在途', group: 'FBA库存', visible: false, pinned: false },
-  { id: 'awdAvailable', label: 'AWD可售', group: 'FBA库存', visible: false, pinned: false },
-  { id: 'awdReserved', label: 'AWD预留', group: 'FBA库存', visible: false, pinned: false },
-  { id: 'awdToFba', label: 'AWD发FBA在途', group: 'FBA库存', visible: false, pinned: false },
   
   // 站点今日 (实时) - Sortable
   { id: 'todaySales', label: '销量 (有效)', group: '站点今日 (实时)', visible: true, pinned: false, sortable: true },
   { id: 'todayOrders', label: '订单量', group: '站点今日 (实时)', visible: true, pinned: false, sortable: true },
   { id: 'todayAmount', label: '销售额', group: '站点今日 (实时)', visible: true, pinned: false, sortable: true },
-  { id: 'todayPrice', label: '商品均价', group: '站点今日 (实时)', visible: false, pinned: false },
-  { id: 'todayAdSpend', label: '广告花费', group: '站点今日 (实时)', visible: false, pinned: false },
-  { id: 'todayAdOrders', label: '广告订单量', group: '站点今日 (实时)', visible: false, pinned: false },
-  { id: 'todayAdSales', label: '广告销售额', group: '站点今日 (实时)', visible: false, pinned: false },
   
-  // 站点昨日 - Sortable
+  // 站点昨日
   { id: 'yesterdaySales', label: '销量', group: '站点昨日', visible: true, pinned: false, sortable: true },
   { id: 'yesterdayOrders', label: '订单量', group: '站点昨日', visible: true, pinned: false },
   { id: 'yesterdayAmount', label: '销售额', group: '站点昨日', visible: true, pinned: false },
-  { id: 'yesterdayPrice', label: '商品均价', group: '站点昨日', visible: false, pinned: false },
-  { id: 'yesterdayAdSpend', label: '广告花费', group: '站点昨日', visible: false, pinned: false },
-  { id: 'yesterdayAdOrders', label: '广告订单量', group: '站点昨日', visible: false, pinned: false },
-  { id: 'yesterdayAdSales', label: '广告销售额', group: '站点昨日', visible: false, pinned: false },
 
-  // 上周同日 - Sortable
+  // 上周同日
   { id: 'lastWeekSales', label: '销量', group: '上周同日', visible: true, pinned: false, sortable: true },
   { id: 'lastWeekOrders', label: '订单量', group: '上周同日', visible: true, pinned: false },
   { id: 'lastWeekAmount', label: '销售额', group: '上周同日', visible: true, pinned: false },
-  { id: 'lastWeekPrice', label: '商品均价', group: '上周同日', visible: false, pinned: false },
-  { id: 'lastWeekAdSpend', label: '广告花费', group: '上周同日', visible: false, pinned: false },
-  { id: 'lastWeekAdOrders', label: '广告订单量', group: '上周同日', visible: false, pinned: false },
-  { id: 'lastWeekAdSales', label: '广告销售额', group: '上周同日', visible: false, pinned: false },
-
-  // 去年同日 - Sortable
-  { id: 'lastYearSales', label: '销量', group: '去年同日', visible: true, pinned: false, sortable: true },
-  { id: 'lastYearOrders', label: '订单量', group: '去年同日', visible: true, pinned: false },
-  { id: 'lastYearAmount', label: '销售额', group: '去年同日', visible: true, pinned: false },
-  { id: 'lastYearPrice', label: '商品均价', group: '去年同日', visible: false, pinned: false },
-  { id: 'lastYearAdSpend', label: '广告花费', group: '去年同日', visible: false, pinned: false },
-  { id: 'lastYearAdOrders', label: '广告订单量', group: '去年同日', visible: false, pinned: false },
-  { id: 'lastYearAdSales', label: '广告销售额', group: '去年同日', visible: false, pinned: false },
 ];
 
-const INITIAL_GROUP_ORDER = ['基础信息', 'FBA库存', '站点今日 (实时)', '站点昨日', '上周同日', '去年同日'];
+const INITIAL_GROUP_ORDER = ['基础信息', 'FBA库存', '站点今日 (实时)', '站点昨日', '上周同日'];
 
 const COLUMN_DEFS: Record<string, { width: number, align?: 'left'|'center'|'right', render: (item: any) => React.ReactNode }> = {
     'img': { width: 48, align: 'center', render: (item) => <div className="w-8 h-8 border border-gray-200 rounded overflow-hidden mx-auto bg-gray-50 relative group/img"><img src={item.img} className="w-full h-full object-cover" /></div> },
@@ -199,49 +194,12 @@ const COLUMN_DEFS: Record<string, { width: number, align?: 'left'|'center'|'righ
     'sku_name': { width: 110, align: 'left', render: (item) => <div className="text-gray-600 truncate text-[11px] w-full block" title={item.skuName}>{item.skuName}</div> },
     'tags': { width: 80, align: 'left', render: (item) => (<div className="flex gap-1 flex-wrap overflow-hidden h-full items-center w-full">{item.tags && item.tags.map ? item.tags.map((t: string, i: number) => <span key={i} className="text-[9px] px-1 bg-gray-100 text-gray-500 rounded border border-gray-200 whitespace-nowrap">{t}</span>) : null}</div>) },
     'salesperson': { width: 80, align: 'left', render: (item) => <div className="text-gray-600 flex items-center gap-1 text-[11px] truncate w-full block"><User size={10} className="text-gray-400 shrink-0"/> {item.salesperson}</div> },
-    'rank_main': { width: 80, align: 'right', render: (item) => <span className="text-gray-600 text-[10px] truncate block w-full">{item.rankMain ? `#${item.rankMain}` : '-'}</span> },
-    'rank_sub': { width: 80, align: 'right', render: (item) => <span className="text-gray-600 text-[10px] truncate block w-full">{item.rankSub ? `#${item.rankSub}` : '-'}</span> },
-    'sales_7d': { width: 60, align: 'right', render: (item) => <span className="text-gray-600">{item.sales7d}</span> },
-    'sales_14d': { width: 60, align: 'right', render: (item) => <span className="text-gray-600">{item.sales14d}</span> },
-    'sales_30d': { width: 60, align: 'right', render: (item) => <span className="text-gray-600">{item.sales30d}</span> },
     'trend': { width: 100, align: 'center', render: (item) => <div className="flex justify-center items-center h-full"><Sparkline data={item.trend} /></div> },
     'fbaDays': { width: 90, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.fbaDays}</span> },
     'fbaAvailable': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.fbaAvailable}</span> },
-    'fbaReserved': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-400">{item.fbaReserved}</span> },
-    'fbaInbound': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-400">{item.fbaInbound}</span> },
-    'awdInv': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.awdInv}</span> },
-    'awdInbound': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-400">{item.awdInbound}</span> },
-    'awdAvailable': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.awdAvailable}</span> },
-    'awdReserved': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-400">{item.awdReserved}</span> },
-    'awdToFba': { width: 70, align: 'right', render: (item) => <span className="tabular-nums text-gray-400">{item.awdToFba}</span> },
     'todaySales': { width: 60, align: 'right', render: (item) => <span className="tabular-nums font-bold text-gray-900">{item.todaySales}</span> },
     'todayOrders': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-700">{item.todayOrders}</span> },
     'todayAmount': { width: 80, align: 'right', render: (item) => <span className="tabular-nums text-orange-600 font-medium text-[10px]">{item.todayAmount?.toFixed(2)}</span> },
-    'todayPrice': { width: 75, align: 'right', render: (item) => <span className="tabular-nums text-gray-500 text-[10px]">{item.todayPrice?.toFixed(2)}</span> },
-    'todayAdSpend': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.todayAdSpend?.toFixed(2)}</span> },
-    'todayAdOrders': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.todayAdOrders}</span> },
-    'todayAdSales': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.todayAdSales?.toFixed(2)}</span> },
-    'yesterdaySales': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.yesterdaySales}</span> },
-    'yesterdayOrders': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.yesterdayOrders}</span> },
-    'yesterdayAmount': { width: 80, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.yesterdayAmount?.toFixed(2)}</span> },
-    'yesterdayPrice': { width: 75, align: 'right', render: (item) => <span className="tabular-nums text-gray-400 text-[10px]">{item.yesterdayPrice?.toFixed(2)}</span> },
-    'yesterdayAdSpend': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-400 text-[10px]">{item.yesterdayAdSpend?.toFixed(2)}</span> },
-    'yesterdayAdOrders': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-400">{item.yesterdayAdOrders}</span> },
-    'yesterdayAdSales': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-400 text-[10px]">{item.yesterdayAdSales?.toFixed(2)}</span> },
-    'lastWeekSales': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.lastWeekSales}</span> },
-    'lastWeekOrders': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.lastWeekOrders}</span> },
-    'lastWeekAmount': { width: 80, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastWeekAmount?.toFixed(2)}</span> },
-    'lastWeekPrice': { width: 75, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastWeekPrice?.toFixed(2)}</span> },
-    'lastWeekAdSpend': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastWeekAdSpend?.toFixed(2)}</span> },
-    'lastWeekAdOrders': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.lastWeekAdOrders}</span> },
-    'lastWeekAdSales': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastWeekAdSales?.toFixed(2)}</span> },
-    'lastYearSales': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.lastYearSales}</span> },
-    'lastYearOrders': { width: 60, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.lastYearOrders}</span> },
-    'lastYearAmount': { width: 80, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastYearAmount?.toFixed(2)}</span> },
-    'lastYearPrice': { width: 75, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastYearPrice?.toFixed(2)}</span> },
-    'lastYearAdSpend': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastYearAdSpend?.toFixed(2)}</span> },
-    'lastYearAdOrders': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600">{item.lastYearAdOrders}</span> },
-    'lastYearAdSales': { width: 85, align: 'right', render: (item) => <span className="tabular-nums text-gray-600 text-[10px]">{item.lastYearAdSales?.toFixed(2)}</span> },
 };
 
 const Sparkline = ({ data, color = "#3b82f6" }: { data: number[], color?: string }) => {
@@ -261,189 +219,6 @@ const Sparkline = ({ data, color = "#3b82f6" }: { data: number[], color?: string
             <path d={`M${points}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx={(data.length - 1) / (data.length - 1) * width} cy={height - ((data[data.length-1] - min) / range) * (height - 4) - 2} r="2" fill={color} />
         </svg>
-    );
-};
-
-// ... MetricCardModule & CurrencyFilterDropdown & RealTimeColumnModal (Use existing, omitted for brevity) ...
-// (Retaining the MetricCardModule and other sub-components exactly as they were in the previous version to save space in this response, as they don't change logic, but including them in the final file content is implied by 'index.tsx')
-
-// ... (Pasting previous helper components to ensure file completeness)
-const MetricCardModule = ({ title, value, sub1, sub2, isCurrency = false, loading = false }: any) => {
-    const renderChange = (val: number) => {
-        const isPos = val >= 0;
-        return (
-            <span className={`flex items-center text-[10px] font-medium ml-1 ${isPos ? 'text-green-600' : 'text-red-500'}`}>
-                {Math.abs(val).toFixed(1)}% {isPos ? <ArrowUp size={8} strokeWidth={3} /> : <ArrowDown size={8} strokeWidth={3} />}
-            </span>
-        );
-    };
-    return (
-        <div className="bg-white border border-gray-200 rounded shadow-sm p-4 flex flex-col justify-center h-28 hover:shadow-md transition-all group relative overflow-hidden">
-            {loading ? (
-                <div className="flex flex-col gap-2 animate-pulse">
-                    <div className="h-3 bg-gray-100 rounded w-12"></div>
-                    <div className="h-6 bg-gray-100 rounded w-24"></div>
-                    <div className="h-3 bg-gray-100 rounded w-full"></div>
-                </div>
-            ) : (
-                <>
-                    <div className="absolute top-0 right-0 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreHorizontal size={14} className="text-gray-400 hover:text-blue-600 cursor-pointer"/>
-                    </div>
-                    <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">{title} <HelpCircle size={10} className="text-gray-300" /></div>
-                    <div className="text-2xl font-bold text-gray-800 mb-2 font-mono tracking-tight">
-                        {isCurrency ? `$${Number(value).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}` : Number(value).toLocaleString()}
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-gray-400">
-                        <div className="flex items-center bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">昨日 {renderChange(sub1)}</div>
-                        <div className="flex items-center bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">上周 {renderChange(sub2)}</div>
-                    </div>
-                </>
-            )}
-        </div>
-    );
-};
-
-const CurrencyFilterDropdown: React.FC<{ onChange: (val: string | null) => void, value: string | null }> = ({ onChange, value }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const currencies = ['USD', 'CNY', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD'];
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-  return (
-    <div className="relative" ref={containerRef}>
-      <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between min-w-[80px] h-7 px-2 border rounded transition-colors text-xs bg-white cursor-pointer select-none w-24 ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
-        <span className="truncate flex-1 text-left">{value || '全币种'}</span>
-        <div className="flex items-center gap-1">
-            {value && (<div onClick={(e) => { e.stopPropagation(); onChange(null); }} className="p-0.5 hover:bg-gray-200 rounded-full cursor-pointer text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></div>)}
-            <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'}`} />
-        </div>
-      </div>
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-24 bg-white border border-gray-200 shadow-xl rounded z-50 flex flex-col animate-in fade-in zoom-in-95 duration-100 py-1">
-             {currencies.map(curr => (
-                 <div key={curr} className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-50 transition-colors ${value === curr ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`} onClick={() => { onChange(curr); setIsOpen(false); }}>{curr}</div>
-             ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Placeholder for Modal to keep file size manageable if not changing
-// (Assuming RealTimeColumnModal is defined here as per previous file content, simplified for brevity in this output but needs to be included in real file)
-// ... RealTimeColumnModal definition ...
-// Re-inserting RealTimeColumnModal for completeness
-interface UIItem {
-    id: string;
-    type: 'column' | 'group';
-    label: string;
-    pinned: boolean;
-    visible: boolean;
-    locked?: boolean;
-    zone: 1 | 2 | 3 | 4; 
-    originalIndex?: number;
-}
-
-const RealTimeColumnModal = ({ 
-    isOpen, 
-    onClose, 
-    columns, 
-    onSave,
-    groupOrder
-}: { 
-    isOpen: boolean; 
-    onClose: () => void; 
-    columns: ColumnConfig[]; 
-    onSave: (cols: ColumnConfig[], newGroupOrder: string[]) => void;
-    groupOrder: string[];
-}) => {
-    // ... (Standard modal logic, same as before) ...
-    // To save tokens, I will assume the modal logic is unchanged and just include the render part if needed, 
-    // but for "Full content" I must include it.
-    
-    const [localColumns, setLocalColumns] = useState<ColumnConfig[]>(columns);
-    const [localGroupOrder, setLocalGroupOrder] = useState<string[]>(groupOrder);
-    const [uiList, setUiList] = useState<UIItem[]>([]);
-    const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-
-    useEffect(() => { 
-        if (isOpen) {
-            setLocalColumns(JSON.parse(JSON.stringify(columns)));
-            setLocalGroupOrder([...groupOrder]);
-        }
-    }, [isOpen, columns, groupOrder]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const basicCols = localColumns.filter(c => c.group === '基础信息');
-        const pinnedBasic = basicCols.filter(c => c.pinned);
-        const unpinnedBasic = basicCols.filter(c => !c.pinned);
-        const pinnedGroups: string[] = [];
-        const unpinnedGroups: string[] = [];
-        localGroupOrder.forEach(gName => {
-            if (gName === '基础信息') return;
-            const gCols = localColumns.filter(c => c.group === gName);
-            const visibleGCols = gCols.filter(c => c.visible);
-            const isPinned = visibleGCols.length > 0 && visibleGCols.every(c => c.pinned);
-            if (isPinned) pinnedGroups.push(gName);
-            else unpinnedGroups.push(gName);
-        });
-        const list: UIItem[] = [];
-        pinnedBasic.forEach(c => list.push({ id: c.id, type: 'column', label: c.label, pinned: true, visible: c.visible, locked: c.id === 'img', zone: 1 }));
-        pinnedGroups.forEach(g => list.push({ id: g, type: 'group', label: g, pinned: true, visible: true, zone: 2 }));
-        unpinnedBasic.forEach(c => list.push({ id: c.id, type: 'column', label: c.label, pinned: false, visible: c.visible, zone: 3 }));
-        unpinnedGroups.forEach(g => list.push({ id: g, type: 'group', label: g, pinned: false, visible: true, zone: 4 }));
-        setUiList(list);
-    }, [localColumns, localGroupOrder, isOpen]);
-
-    if (!isOpen) return null;
-
-    const toggleVisible = (id: string) => setLocalColumns(prev => prev.map(c => c.id === id ? { ...c, visible: !c.visible } : c));
-    const toggleGroupVisible = (group: string) => {
-        const groupCols = localColumns.filter(c => c.group === group);
-        const allVisible = groupCols.every(c => c.visible);
-        setLocalColumns(prev => prev.map(c => c.group === group ? { ...c, visible: !allVisible } : c));
-    };
-    const toggleAll = () => {
-        const allVisible = localColumns.every(c => c.visible);
-        setLocalColumns(prev => prev.map(c => ({ ...c, visible: !allVisible })));
-    };
-    const handlePin = (item: UIItem) => {
-        if (item.locked) return;
-        const newPinned = !item.pinned;
-        if (item.type === 'column') {
-            setLocalColumns(prev => prev.map(c => c.id === item.id ? { ...c, pinned: newPinned } : c));
-        } else {
-            setLocalColumns(prev => prev.map(c => c.group === item.id ? { ...c, pinned: newPinned } : c));
-        }
-    };
-    const handleTop = (item: UIItem) => { /* simplified */ };
-    
-    // Simplified render for modal (assume full logic exists)
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-sm">
-            <div className="bg-white rounded-lg shadow-2xl w-[900px] h-[650px] flex flex-col">
-                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-                    <h2 className="text-base font-bold text-gray-800">自定义列</h2>
-                    <button onClick={onClose}><X size={20} /></button>
-                </div>
-                {/* ... Body ... */}
-                <div className="flex-1 p-6 overflow-auto">
-                    <p className="text-gray-500">列配置面板 (详细逻辑省略以节省篇幅，功能保持不变)</p>
-                    <div className="mt-4"><button onClick={toggleAll} className="text-blue-600">全选/反选</button></div>
-                </div>
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-                    <button onClick={onClose} className="px-4 py-1.5 border rounded bg-white">取消</button>
-                    <button onClick={() => onSave(localColumns, localGroupOrder)} className="px-6 py-1.5 bg-blue-600 text-white rounded">保存</button>
-                </div>
-            </div>
-        </div>
     );
 };
 
@@ -470,10 +245,11 @@ export const RealTime = () => {
   // Filters State
   const [resetKey, setResetKey] = useState(0);
   const [filterTags, setFilterTags] = useState<string[]>([]);
-  const [filterCurrency, setFilterCurrency] = useState<string | null>(null);
+  const [filterCurrency, setFilterCurrency] = useState<string>('原币种');
   const [filterSalespersons, setFilterSalespersons] = useState<string[]>([]);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [selectedShops, setSelectedShops] = useState<string[]>([]);
+  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<string | null>(null);
   
   // Search & Sort State
   const [searchText, setSearchText] = useState('');
@@ -513,8 +289,6 @@ export const RealTime = () => {
   const handleSync = async () => {
       setIsSyncing(true);
       try {
-          // Sync last 24 hours (1440 minutes) to cover the full "sales day" and catch any missed orders
-          // from the "morning" (relative to server/PST)
           const res = await fetch('/api/orders/sync', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
@@ -522,7 +296,6 @@ export const RealTime = () => {
           });
           const result = await res.json();
           if (result.success) {
-              // Refresh table after sync
               fetchData();
           } else {
               alert("同步失败，请稍后重试");
@@ -540,10 +313,6 @@ export const RealTime = () => {
       return () => clearInterval(interval);
   }, [selectedSites, selectedShops, filterSalespersons, activeTab, sortConfig]);
 
-  const handleSearch = () => {
-      fetchData();
-  };
-
   const handleSort = (key: string) => {
       setSortConfig(prev => {
           if (prev.key === key) {
@@ -556,15 +325,16 @@ export const RealTime = () => {
   const handleReset = () => {
       setResetKey(prev => prev + 1);
       setFilterTags([]);
-      setFilterCurrency(null);
+      setFilterCurrency('原币种');
       setFilterSalespersons([]);
       setSelectedSites([]);
       setSelectedShops([]);
+      setSelectedDeliveryMethod(null);
       setSearchText('');
       setSortConfig({ key: 'todaySales', direction: 'DESC' });
   };
 
-  // --- Calculate Table Segments based on 4-Zone Logic ---
+  // --- Calculate Table Segments ---
   const { pinnedColumns, unpinnedBasicInfo, pinnedGroups, unpinnedGroups } = useMemo(() => {
       const basicCols = columns.filter(c => c.group === '基础信息');
       const pinnedBasic = basicCols.filter(c => c.pinned && c.visible);
@@ -627,111 +397,121 @@ export const RealTime = () => {
 
   return (
     <div className="flex flex-col h-full bg-white shadow-sm border border-slate-200 rounded-sm">
-      <RealTimeColumnModal 
-        isOpen={isColumnModalOpen} 
-        onClose={() => setIsColumnModalOpen(false)} 
-        columns={columns} 
-        groupOrder={groupOrder}
-        onSave={(newCols, newGroupOrder) => { 
-            setColumns(newCols); 
-            setGroupOrder(newGroupOrder);
-            setIsColumnModalOpen(false); 
-        }}
-      />
-
-      {/* Module 1: Filter Bar */}
-      <div className="bg-white border-b border-gray-200 h-14 shrink-0 flex items-center justify-between px-4 shadow-sm z-20 relative">
+      {/* 
+        ================================================================
+        GLOBAL FILTER & CONTROL BAR (New Design) 
+        ================================================================
+      */}
+      <div className="h-12 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 z-20 relative">
+          
+          {/* Left: Filter Group */}
           <div className="flex items-center gap-2">
-              <SiteFilterDropdown key={`site-${resetKey}`} onChange={setSelectedSites} />
-              <ShopFilterDropdown key={`shop-${resetKey}`} onChange={setSelectedShops} returnField="name" />
-              <MultiSelectDropdown 
-                  key={`tags-${resetKey}`}
-                  label="产品标签" 
-                  options={[{ id: '1', name: '爆款' }, { id: '2', name: '新品' }]}
-                  onChange={setFilterTags}
-                  className="w-28"
+              <SiteFilterDropdown key={`site-${resetKey}`} onChange={setSelectedSites} width="160px" />
+              <ShopFilterDropdown key={`shop-${resetKey}`} onChange={setSelectedShops} returnField="name" width="130px" />
+              <DeliveryMethodFilterDropdown key={`dm-${resetKey}`} onChange={setSelectedDeliveryMethod} width="100px" />
+              
+              <ProductTagFilter 
+                  key={`tag-${resetKey}`}
+                  onChange={setFilterTags} 
+                  width="120px"
               />
-              <CurrencyFilterDropdown key={`curr-${resetKey}`} value={filterCurrency} onChange={setFilterCurrency} />
-              <SalespersonFilterDropdown key={`sp-${resetKey}`} onChange={setFilterSalespersons} className="w-28" />
-              <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:border-blue-400 hover:text-blue-600 bg-white text-gray-500 transition-colors ml-1">
-                  <Filter size={14} />
-              </button>
-              <button onClick={handleReset} className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200">
-                  <FilterX size={12} /> 重置
+              
+              <SimpleSelect 
+                  value={filterCurrency} 
+                  onChange={setFilterCurrency} 
+                  options={['原币种', 'CNY', 'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD']} 
+                  width="80px" 
+              />
+              
+              <SalespersonFilterDropdown key={`sp-${resetKey}`} onChange={setFilterSalespersons} width="130px" />
+              
+              {/* Reset Button */}
+              <button 
+                  onClick={handleReset}
+                  className="flex items-center gap-1 px-3 py-1 text-xs text-gray-500 hover:text-blue-600 transition-colors ml-1"
+                  title="重置筛选"
+              >
+                  <Filter size={12} className="fill-gray-100" /> 重置
               </button>
           </div>
 
-          <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
-                  <Clock size={12} className="text-blue-500"/> 
-                  <span className="font-mono">{lastUpdate.toLocaleTimeString()}</span>
-              </span>
-              <div className="flex items-center gap-1 text-gray-400 border-l border-gray-200 pl-3">
-                  <button 
-                    onClick={handleSync} 
-                    disabled={isSyncing}
-                    className="p-2 hover:bg-gray-100 rounded text-blue-600 transition-colors flex items-center gap-1 disabled:opacity-50" 
-                    title="同步最新数据"
-                  >
-                      {isSyncing ? <Loader2 size={16} className="animate-spin"/> : <CloudDownload size={16}/>}
-                  </button>
-                  <button onClick={() => fetchData()} className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors" title="刷新列表"><RefreshCw size={16}/></button>
-                  <button className="p-2 hover:bg-gray-100 rounded hover:text-blue-600 transition-colors" title="设置"><Settings size={16}/></button>
-              </div>
+          {/* Right: Operation Group */}
+          <div className="flex items-center gap-2">
+              <button className="px-3 py-1.5 border border-gray-200 rounded-sm text-xs text-gray-600 hover:text-blue-600 hover:border-blue-400 bg-white transition-colors">
+                  分时趋势
+              </button>
+              <button className="px-3 py-1.5 border border-gray-200 rounded-sm text-xs text-gray-600 hover:text-blue-600 hover:border-blue-400 bg-white transition-colors">
+                  统计设置
+              </button>
+              <button className="px-3 py-1.5 border border-gray-200 rounded-sm text-xs text-gray-600 hover:text-blue-600 hover:border-blue-400 bg-white transition-colors">
+                  隐藏统计
+              </button>
           </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden w-full min-h-0">
-          <div className="grid grid-cols-5 gap-4 shrink-0">
-              <MetricCardModule title="销量 (有效)" value={summary?.sales?.value || 0} sub1={summary?.sales?.yesterday || 0} sub2={summary?.sales?.lastWeek || 0} loading={loading} />
-              <MetricCardModule title="销售额" value={summary?.amount?.value || 0} sub1={summary?.amount?.yesterday || 0} sub2={summary?.amount?.lastWeek || 0} isCurrency loading={loading} />
-              <MetricCardModule title="订单量" value={summary?.orders?.value || 0} sub1={summary?.orders?.yesterday || 0} sub2={summary?.orders?.lastWeek || 0} loading={loading} />
-              <MetricCardModule title="商品均价" value={summary?.avgPrice?.value || 0} sub1={summary?.avgPrice?.yesterday || 0} sub2={summary?.avgPrice?.lastWeek || 0} isCurrency loading={loading} />
-              <MetricCardModule title="取消订单数" value={summary?.cancelled?.value || 0} sub1={summary?.cancelled?.yesterday || 0} sub2={summary?.cancelled?.lastWeek || 0} loading={loading} />
-          </div>
-
+      <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden w-full min-h-0 bg-gray-50/30">
+          
           {/* Table Area */}
           <div className="flex-1 bg-white border border-gray-200 rounded shadow-sm overflow-hidden flex flex-col min-h-0 relative">
-              <div className="px-4 py-2 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 h-12">
+              
+              {/* Table Toolbar (Tabs & Search) */}
+              <div className="px-4 py-2 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 h-10">
                   <div className="flex items-center gap-2">
-                      <div className="flex rounded-[2px] border border-blue-600 overflow-hidden h-7">
+                      {/* Tabs */}
+                      <div className="flex gap-4 mr-4">
                           {['ASIN', '父ASIN', 'MSKU', 'SKU'].map(tab => (
-                              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 text-xs font-medium transition-colors border-r border-blue-600 last:border-0 ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50'}`}>{tab}</button>
+                              <button 
+                                key={tab} 
+                                onClick={() => setActiveTab(tab)} 
+                                className={`text-xs font-bold transition-colors border-b-2 pb-2 -mb-2.5 ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                              >
+                                {tab}
+                              </button>
                           ))}
                       </div>
-                      <div className="flex items-center border border-gray-300 rounded-[2px] h-7 hover:border-blue-400 transition-colors bg-white group focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100 w-96 ml-2">
-                        <div className="relative h-full border-r border-gray-200 px-2 flex items-center cursor-pointer bg-gray-50 hover:bg-gray-100 min-w-[70px] justify-between">
-                            <span className="text-xs text-gray-700">{activeTab}</span>
-                            <ChevronDown size={10} className="text-gray-500 ml-1" />
-                        </div>
+                      
+                      <div className="h-4 w-px bg-gray-200 mx-2"></div>
+
+                      {/* Search */}
+                      <div className="flex items-center border border-gray-200 rounded-sm h-7 hover:border-blue-400 transition-colors bg-white w-64">
                         <div className="relative h-full flex-1 flex items-center px-2">
                             <LayoutGrid size={12} className="text-gray-300 mr-2 shrink-0" />
                             <input 
                                 type="text" 
-                                className="w-full text-xs outline-none text-gray-700 bg-transparent placeholder:text-gray-400 h-full" 
-                                placeholder="搜索 ASIN/SKU/标题 (Enter搜索)" 
+                                className="w-full text-xs outline-none text-gray-700 bg-transparent placeholder:text-gray-300 h-full" 
+                                placeholder="搜索 ASIN/SKU/标题" 
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') fetchData(); }}
                             />
-                            <button className="ml-1 text-[10px] text-gray-500 border border-gray-200 bg-gray-100 px-1 rounded-sm hover:text-blue-600 hover:border-blue-400 transition-colors">精</button>
                         </div>
-                        <div className="h-full w-8 flex items-center justify-center border-l border-gray-200 cursor-pointer hover:bg-gray-50 text-gray-500 hover:text-blue-600" onClick={handleSearch}>
-                            <Search size={14} />
+                        <div className="h-full w-7 flex items-center justify-center border-l border-gray-200 cursor-pointer hover:bg-gray-50 text-gray-500 hover:text-blue-600" onClick={() => fetchData()}>
+                            <Search size={12} />
                         </div>
                       </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-600">
-                      <label className="flex items-center gap-1 cursor-pointer hover:text-blue-600 select-none"><input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-0" defaultChecked /><span>环比昨日</span></label>
-                      <button onClick={() => setIsColumnModalOpen(true)} className="flex items-center gap-1 hover:text-blue-600 transition-colors"><Settings size={14} /><span>自定义列</span></button>
-                      <div className="h-4 w-px bg-gray-300"></div>
-                      <div className="flex items-center gap-2 text-gray-500">
-                          <button onClick={() => fetchData()} className="p-1 hover:bg-gray-100 rounded hover:text-blue-600 transition-colors" title="刷新"><RefreshCw size={15}/></button>
+
+                  {/* Sync & Tools */}
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                          <Clock size={10} className="text-gray-400"/> 
+                          <span className="font-mono text-[10px]">{lastUpdate.toLocaleTimeString()}</span>
                       </div>
+                      <button 
+                        onClick={handleSync} 
+                        disabled={isSyncing}
+                        className={`hover:text-blue-600 transition-colors ${isSyncing ? 'animate-spin text-blue-600' : ''}`}
+                        title="同步"
+                      >
+                          <CloudDownload size={14} />
+                      </button>
+                      <button className="hover:text-blue-600 transition-colors" title="下载"><Download size={14} /></button>
+                      <button className="hover:text-blue-600 transition-colors" title="设置"><Settings size={14} /></button>
                   </div>
               </div>
 
+              {/* Table */}
               <div className="flex-1 overflow-auto relative scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                   <table className="text-xs text-left border-separate border-spacing-0 table-fixed" style={{ width: tableWidth }}>
                       <thead className="text-gray-600 font-medium sticky top-0 z-40 bg-gray-50 shadow-sm">
@@ -853,6 +633,7 @@ export const RealTime = () => {
                       </tfoot>
                   </table>
               </div>
+              
               <div className="px-4 py-2 border-t border-gray-200 bg-white flex justify-between items-center text-xs text-gray-500 select-none shrink-0">
                   <div>显示第 1 到 {data.length} 条记录，共 {data.length} 条</div>
                   <div className="flex gap-4 items-center">

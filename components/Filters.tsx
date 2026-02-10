@@ -5,9 +5,7 @@ import {
   Search, 
   X,
   Check,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronLeft
+  ChevronRight
 } from 'lucide-react';
 import { MARKETPLACE_MAP } from '../constants';
 import { Salesperson, ShopItem, SiteItem, StatusItem } from '../types';
@@ -45,16 +43,25 @@ const FLAG_MAP: Record<string, string> = {
 
 const getFlag = (id: string) => FLAG_MAP[id] || '🌐';
 
+interface FilterProps {
+    onChange?: (val: any) => void;
+    width?: string;
+    className?: string;
+    style?: React.CSSProperties;
+}
+
 export const MultiSelectDropdown: React.FC<{ 
   label: string, 
   options: { id: string, name: string }[], 
   onChange: (selectedIds: string[]) => void,
-  className?: string
+  className?: string,
+  width?: string
 }> = ({ 
   label, 
   options, 
   onChange,
-  className 
+  className,
+  width
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -106,10 +113,10 @@ export const MultiSelectDropdown: React.FC<{
   };
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative ${className}`} ref={containerRef} style={{ width }}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between w-full h-7 px-2 border rounded transition-colors text-xs bg-white ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}
+        className={`flex items-center justify-between w-full h-8 px-2 border rounded-sm transition-colors text-xs bg-white ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}
       >
         <span className="truncate">{selectedIds.size > 0 ? `已选 ${selectedIds.size} 项` : label}</span>
         
@@ -198,7 +205,7 @@ export const MultiSelectDropdown: React.FC<{
   );
 };
 
-export const SalespersonFilterDropdown: React.FC<{ onChange?: (selectedIds: string[]) => void, className?: string }> = ({ onChange, className }) => {
+export const SalespersonFilterDropdown: React.FC<FilterProps> = ({ onChange, className, width }) => {
     const [salespersons, setSalespersons] = useState<Salesperson[]>([]);
 
     useEffect(() => {
@@ -208,13 +215,12 @@ export const SalespersonFilterDropdown: React.FC<{ onChange?: (selectedIds: stri
           .catch(err => console.error(err));
     }, []);
 
-    return <MultiSelectDropdown label="业务员" options={salespersons} onChange={onChange || (() => {})} className={className} />;
+    return <MultiSelectDropdown label="业务员" options={salespersons} onChange={onChange || (() => {})} className={className} width={width} />;
 };
 
-export const ShopFilterDropdown: React.FC<{ onChange?: (shops: string[]) => void, returnField?: 'id' | 'name' }> = ({ onChange, returnField = 'id' }) => {
+export const ShopFilterDropdown: React.FC<{ onChange?: (shops: string[]) => void, returnField?: 'id' | 'name', width?: string, className?: string }> = ({ onChange, returnField = 'id', width, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  // Extend ShopItem to include marketplaceId which is now provided by backend
   interface ExtendedShopItem extends ShopItem {
       marketplaceId?: string;
   }
@@ -301,10 +307,10 @@ export const ShopFilterDropdown: React.FC<{ onChange?: (shops: string[]) => void
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className={`relative ${className}`} ref={containerRef} style={{ width }}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className={`group flex items-center justify-between min-w-[100px] h-7 px-2 border rounded transition-colors text-xs bg-white cursor-pointer select-none w-28 ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}
+        className={`group flex items-center justify-between w-full h-8 px-2 border rounded-sm transition-colors text-xs bg-white cursor-pointer select-none ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}
       >
         <span className="truncate flex-1 text-left">{selectedIds.size > 0 ? `已选 ${selectedIds.size} 个` : '全部店铺'}</span>
         <div className="flex items-center gap-1">
@@ -357,7 +363,7 @@ export const ShopFilterDropdown: React.FC<{ onChange?: (shops: string[]) => void
   );
 };
 
-export const StatusFilterDropdown: React.FC<{ onChange?: (statuses: string[]) => void }> = ({ onChange }) => {
+export const StatusFilterDropdown: React.FC<{ onChange?: (statuses: string[]) => void, width?: string, className?: string }> = ({ onChange, width, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [statuses, setStatuses] = useState<StatusItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -412,8 +418,8 @@ export const StatusFilterDropdown: React.FC<{ onChange?: (statuses: string[]) =>
   const isAllSelected = filteredStatuses.length > 0 && filteredStatuses.every(s => selectedIds.has(s.id));
 
   return (
-    <div className="relative" ref={containerRef}>
-      <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between min-w-[100px] h-7 px-2 border rounded transition-colors text-xs bg-white cursor-pointer select-none w-24 ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
+    <div className={`relative ${className}`} ref={containerRef} style={{ width }}>
+      <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between w-full h-8 px-2 border rounded-sm transition-colors text-xs bg-white cursor-pointer select-none ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
         <span className="truncate flex-1 text-left">{selectedIds.size > 0 ? `已选 ${selectedIds.size} 个` : '全部状态'}</span>
         <div className="flex items-center gap-1">
             {selectedIds.size > 0 && (<div onClick={handleClear} className="p-0.5 hover:bg-gray-200 rounded-full cursor-pointer text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></div>)}
@@ -457,7 +463,7 @@ export const StatusFilterDropdown: React.FC<{ onChange?: (statuses: string[]) =>
   );
 };
 
-export const DeliveryMethodFilterDropdown: React.FC<{ onChange?: (method: string | null) => void }> = ({ onChange }) => {
+export const DeliveryMethodFilterDropdown: React.FC<{ onChange?: (method: string | null) => void, width?: string, className?: string }> = ({ onChange, width, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [methods, setMethods] = useState<{id: string, name: string}[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -490,8 +496,8 @@ export const DeliveryMethodFilterDropdown: React.FC<{ onChange?: (method: string
   const selectedName = methods.find(m => m.id === selectedId)?.name;
 
   return (
-    <div className="relative" ref={containerRef}>
-      <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between min-w-[80px] h-7 px-2 border rounded transition-colors text-xs bg-white cursor-pointer select-none w-24 ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
+    <div className={`relative ${className}`} ref={containerRef} style={{ width }}>
+      <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between w-full h-8 px-2 border rounded-sm transition-colors text-xs bg-white cursor-pointer select-none ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
         <span className="truncate flex-1 text-left">{selectedName || '发货方式'}</span>
         <div className="flex items-center gap-1">
             {selectedId && (<div onClick={handleClear} className="p-0.5 hover:bg-gray-200 rounded-full cursor-pointer text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></div>)}
@@ -511,7 +517,7 @@ export const DeliveryMethodFilterDropdown: React.FC<{ onChange?: (method: string
   );
 };
 
-export const SiteFilterDropdown: React.FC<{ onChange?: (sites: string[]) => void }> = ({ onChange }) => {
+export const SiteFilterDropdown: React.FC<{ onChange?: (sites: string[]) => void, width?: string, className?: string }> = ({ onChange, width, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState<SiteItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -582,8 +588,8 @@ export const SiteFilterDropdown: React.FC<{ onChange?: (sites: string[]) => void
   const activeRegion = data.find(r => r.id === activeRegionId && r.children);
 
   return (
-    <div className="relative" ref={containerRef}>
-        <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between min-w-[100px] h-7 px-2 border rounded transition-colors text-xs bg-white cursor-pointer select-none ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
+    <div className={`relative ${className}`} ref={containerRef} style={{ width }}>
+        <div onClick={() => setIsOpen(!isOpen)} className={`group flex items-center justify-between w-full h-8 px-2 border rounded-sm transition-colors text-xs bg-white cursor-pointer select-none ${isOpen ? 'border-blue-500' : 'border-gray-200 hover:border-blue-400 text-gray-600'}`}>
             <span className="truncate flex-1 text-left">{selected.size > 0 ? `已选 ${selected.size} 个` : '全部站点'}</span>
             <div className="flex items-center gap-1">
                 {selected.size > 0 && (<div onClick={handleClear} className="p-0.5 hover:bg-gray-200 rounded-full cursor-pointer text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></div>)}
