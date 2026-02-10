@@ -17,7 +17,6 @@ import {
   Filter,
   BarChart2,
   User,
-  // Fix: Import Download icon
   Download
 } from 'lucide-react';
 import { 
@@ -27,6 +26,83 @@ import {
   DeliveryMethodFilterDropdown
 } from '../../components/Filters';
 import { ProductTagFilter } from '../../components/ProductTagFilter';
+
+// --- KPI Card Component (New) ---
+const RealTimeKpiCard = ({ title, value, yesterday, lastWeek, prefix = '', decimals = 0 }: any) => {
+    const formatVal = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    
+    const renderTrend = (current: number, past: number) => {
+        if (past === 0) {
+            if (current === 0) return <span className="text-gray-400 text-[10px]">0%</span>;
+            return (
+                <div className="flex items-center text-red-500 text-[10px] font-bold">
+                    100% <ArrowUp size={10} className="ml-0.5" strokeWidth={3} />
+                </div>
+            );
+        }
+        
+        const diff = current - past;
+        const pct = (Math.abs(diff) / past) * 100;
+        const pctStr = pct > 999 ? '>999%' : `${pct.toFixed(0)}%`;
+        
+        if (diff > 0) {
+            return (
+                <div className="flex items-center text-red-500 text-[10px] font-bold">
+                    {pctStr} <ArrowUp size={10} className="ml-0.5" strokeWidth={3} />
+                </div>
+            );
+        } else if (diff < 0) {
+            return (
+                <div className="flex items-center text-green-500 text-[10px] font-bold">
+                    {pctStr} <ArrowDown size={10} className="ml-0.5" strokeWidth={3} />
+                </div>
+            );
+        } else {
+            return <span className="text-gray-400 text-[10px]">0%</span>;
+        }
+    };
+
+    return (
+        <div className="bg-white rounded border border-gray-200 p-4 shadow-sm flex flex-col justify-between h-[124px] hover:shadow-md transition-shadow relative group">
+            <div>
+                <div className="text-xs text-gray-500 mb-1 font-medium">{title}</div>
+                <div className="text-2xl font-bold text-gray-900 font-mono tracking-tight mt-1">
+                    {prefix}{formatVal(value)}
+                </div>
+            </div>
+            
+            <div className="space-y-1.5 mt-2">
+                <div className="flex justify-between items-center text-[11px] leading-none">
+                    <div className="flex items-center gap-1 text-gray-400">
+                        <span>昨日同时</span>
+                        <HelpCircle size={10} className="cursor-help hover:text-gray-600"/>
+                    </div>
+                    <div className="flex items-center">
+                        <span className="text-gray-500 mr-2 font-mono min-w-[30px] text-right">{prefix}{formatVal(yesterday)}</span>
+                        <div className="h-2.5 w-px bg-gray-200 mr-2"></div>
+                        <div className="w-12 flex justify-end">
+                            {renderTrend(value, yesterday)}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] leading-none">
+                    <div className="flex items-center gap-1 text-gray-400">
+                        <span>上周同时</span>
+                        <HelpCircle size={10} className="cursor-help hover:text-gray-600"/>
+                    </div>
+                    <div className="flex items-center">
+                        <span className="text-gray-500 mr-2 font-mono min-w-[30px] text-right">{prefix}{formatVal(lastWeek)}</span>
+                        <div className="h-2.5 w-px bg-gray-200 mr-2"></div>
+                        <div className="w-12 flex justify-end">
+                            {renderTrend(value, lastWeek)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- Reusable Simple Dropdown for Currency ---
 const SimpleSelect = ({ value, onChange, options, width }: { value: string, onChange: (val: string) => void, options: string[], width: string }) => {
@@ -334,6 +410,59 @@ export const RealTime = () => {
       setSortConfig({ key: 'todaySales', direction: 'DESC' });
   };
 
+  // --- KPI Data Preparation ---
+  const kpiData = useMemo(() => {
+      const s = summary || {
+          sales: { value: 0, yesterday: 0, lastWeek: 0 },
+          orders: { value: 0, yesterday: 0, lastWeek: 0 },
+          amount: { value: 0, yesterday: 0, lastWeek: 0 },
+          avgPrice: { value: 0, yesterday: 0, lastWeek: 0 },
+          cancelled: { value: 0, yesterday: 0, lastWeek: 0 }
+      };
+
+      const calcAvg = (amt: number, qty: number) => qty > 0 ? amt / qty : 0;
+
+      return [
+          {
+              title: '销量',
+              value: s.sales.value,
+              yesterday: s.sales.yesterday,
+              lastWeek: s.sales.lastWeek,
+              decimals: 0
+          },
+          {
+              title: '销售额',
+              value: s.amount.value,
+              yesterday: s.amount.yesterday,
+              lastWeek: s.amount.lastWeek,
+              prefix: 'US$',
+              decimals: 2
+          },
+          {
+              title: '订单量',
+              value: s.orders.value,
+              yesterday: s.orders.yesterday,
+              lastWeek: s.orders.lastWeek,
+              decimals: 0
+          },
+          {
+              title: '商品均价',
+              value: calcAvg(s.amount.value, s.sales.value),
+              yesterday: calcAvg(s.amount.yesterday, s.sales.yesterday),
+              lastWeek: calcAvg(s.amount.lastWeek, s.sales.lastWeek),
+              prefix: 'US$',
+              decimals: 2
+          },
+          {
+              title: '取消订单数',
+              value: s.cancelled.value,
+              yesterday: s.cancelled.yesterday,
+              lastWeek: s.cancelled.lastWeek,
+              decimals: 0
+          }
+      ];
+  }, [summary]);
+
   // --- Calculate Table Segments ---
   const { pinnedColumns, unpinnedBasicInfo, pinnedGroups, unpinnedGroups } = useMemo(() => {
       const basicCols = columns.filter(c => c.group === '基础信息');
@@ -452,6 +581,13 @@ export const RealTime = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden w-full min-h-0 bg-gray-50/30">
           
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-5 gap-4 mb-0 shrink-0">
+              {kpiData.map((kpi, idx) => (
+                  <RealTimeKpiCard key={idx} {...kpi} />
+              ))}
+          </div>
+
           {/* Table Area */}
           <div className="flex-1 bg-white border border-gray-200 rounded shadow-sm overflow-hidden flex flex-col min-h-0 relative">
               

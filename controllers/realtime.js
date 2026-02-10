@@ -166,8 +166,10 @@ exports.getRealTimeData = async (pool, req, res) => {
                 COUNT(DISTINCT CASE WHEN ${lyCondition} AND ${validSale} THEN o.amazon_order_id END) as lastYearOrders,
                 SUM(CASE WHEN ${lyCondition} AND ${validSale} THEN (oi.price * oi.quantity) ELSE 0 END) as lastYearAmount,
 
-                -- Cancelled Stats (For reference/tooltip if needed)
-                SUM(CASE WHEN ${todayCondition} AND o.status = 'Canceled' THEN oi.quantity ELSE 0 END) as todayCancelled
+                -- Cancelled Stats
+                SUM(CASE WHEN ${todayCondition} AND o.status = 'Canceled' THEN oi.quantity ELSE 0 END) as todayCancelled,
+                SUM(CASE WHEN ${yestCondition} AND o.status = 'Canceled' THEN oi.quantity ELSE 0 END) as yesterdayCancelled,
+                SUM(CASE WHEN ${lwCondition} AND o.status = 'Canceled' THEN oi.quantity ELSE 0 END) as lastWeekCancelled
 
             FROM orders o
             JOIN order_items oi ON o.amazon_order_id = oi.amazon_order_id
@@ -194,16 +196,19 @@ exports.getRealTimeData = async (pool, req, res) => {
             todaySales: Number(r.todaySales || 0),
             todayOrders: Number(r.todayOrders || 0),
             todayAmount: Number(r.todayAmount || 0),
+            todayCancelled: Number(r.todayCancelled || 0),
             
             // Yesterday
             yesterdaySales: Number(r.yesterdaySales || 0),
             yesterdayOrders: Number(r.yesterdayOrders || 0),
             yesterdayAmount: Number(r.yesterdayAmount || 0),
+            yesterdayCancelled: Number(r.yesterdayCancelled || 0),
 
             // Last Week
             lastWeekSales: Number(r.lastWeekSales || 0),
             lastWeekOrders: Number(r.lastWeekOrders || 0),
             lastWeekAmount: Number(r.lastWeekAmount || 0),
+            lastWeekCancelled: Number(r.lastWeekCancelled || 0),
 
             // Last Year
             lastYearSales: Number(r.lastYearSales || 0),
@@ -224,29 +229,34 @@ exports.getRealTimeData = async (pool, req, res) => {
             ] 
         }));
 
-        // 6. Calculate Summary (Client-side aggregation of current page/set)
-        // Note: Ideally this should be a separate COUNT/SUM query for total accuracy across pages
+        // 6. Calculate Summary
+        const sum = (arr, key) => arr.reduce((acc, r) => acc + Number(r[key] || 0), 0);
+
+        const s_sales_val = sum(formattedRows, 'todaySales');
+        const s_sales_yest = sum(formattedRows, 'yesterdaySales');
+        const s_sales_lw = sum(formattedRows, 'lastWeekSales');
+
+        const s_amt_val = sum(formattedRows, 'todayAmount');
+        const s_amt_yest = sum(formattedRows, 'yesterdayAmount');
+        const s_amt_lw = sum(formattedRows, 'lastWeekAmount');
+
         const summary = {
-            sales: { 
-                value: formattedRows.reduce((s, r) => s + r.todaySales, 0),
-                yesterday: formattedRows.reduce((s, r) => s + r.yesterdaySales, 0),
-                lastWeek: formattedRows.reduce((s, r) => s + r.lastWeekSales, 0)
+            sales: { value: s_sales_val, yesterday: s_sales_yest, lastWeek: s_sales_lw },
+            orders: { 
+                value: sum(formattedRows, 'todayOrders'), 
+                yesterday: sum(formattedRows, 'yesterdayOrders'), 
+                lastWeek: sum(formattedRows, 'lastWeekOrders') 
             },
-            orders: {
-                value: formattedRows.reduce((s, r) => s + r.todayOrders, 0),
-                yesterday: formattedRows.reduce((s, r) => s + r.yesterdayOrders, 0),
-                lastWeek: formattedRows.reduce((s, r) => s + r.lastWeekOrders, 0)
+            amount: { value: s_amt_val, yesterday: s_amt_yest, lastWeek: s_amt_lw },
+            avgPrice: {
+                value: s_sales_val ? s_amt_val / s_sales_val : 0,
+                yesterday: s_sales_yest ? s_amt_yest / s_sales_yest : 0,
+                lastWeek: s_sales_lw ? s_amt_lw / s_sales_lw : 0
             },
-            amount: {
-                value: formattedRows.reduce((s, r) => s + r.todayAmount, 0),
-                yesterday: formattedRows.reduce((s, r) => s + r.yesterdayAmount, 0),
-                lastWeek: formattedRows.reduce((s, r) => s + r.lastWeekAmount, 0)
-            },
-            avgPrice: { value: 0, yesterday: 0, lastWeek: 0 },
             cancelled: { 
-                value: rows.reduce((s, r) => s + Number(r.todayCancelled || 0), 0), 
-                yesterday: 0, 
-                lastWeek: 0 
+                value: sum(formattedRows, 'todayCancelled'), 
+                yesterday: sum(formattedRows, 'yesterdayCancelled'), 
+                lastWeek: sum(formattedRows, 'lastWeekCancelled') 
             }
         };
 
