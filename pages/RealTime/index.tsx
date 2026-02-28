@@ -21,6 +21,8 @@ import {
   DeliveryMethodFilterDropdown
 } from '../../components/Filters';
 import { ProductTagFilter } from '../../components/ProductTagFilter';
+import { CustomColumnsModal } from '../../components/CustomColumnsModal';
+import { ColumnDef } from '../../types';
 
 // --- Types & Registry ---
 
@@ -259,6 +261,9 @@ export const RealTime = () => {
   const [activeTab, setActiveTab] = useState('ASIN');
   const [searchText, setSearchText] = useState('');
   const [searchType, setSearchType] = useState('全部');
+  const [isSearchTypeOpen, setIsSearchTypeOpen] = useState(false);
+  const searchTypeRef = useRef<HTMLDivElement>(null);
+
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterCurrency, setFilterCurrency] = useState<string>('原币种');
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
@@ -270,6 +275,7 @@ export const RealTime = () => {
   // Column Management States
   const [columnSettings, setColumnSettings] = useState(DEFAULT_USER_SETTINGS);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // --- Resize Observer for Elastic Layout ---
@@ -280,6 +286,17 @@ export const RealTime = () => {
       });
       ro.observe(containerRef.current);
       return () => ro.disconnect();
+  }, []);
+
+  // --- Click Outside for Search Type ---
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (searchTypeRef.current && !searchTypeRef.current.contains(event.target as Node)) {
+              setIsSearchTypeOpen(false);
+          }
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // --- Data Fetching ---
@@ -394,6 +411,24 @@ export const RealTime = () => {
       setColumnSettings(DEFAULT_USER_SETTINGS); // Reset columns too
   };
 
+  const handleSaveColumns = (newCols: ColumnDef[]) => {
+      const newSettings = newCols.map(c => ({
+          id: c.id,
+          visible: c.visible,
+          width: c.width,
+          pinned: c.pinned
+      }));
+      setColumnSettings(newSettings);
+  };
+
+  // Prepare columns for Modal
+  const modalColumns = useMemo(() => {
+      return columnSettings.map(s => ({
+          ...s,
+          label: COLUMN_REGISTRY[s.id]?.label || s.id,
+      }));
+  }, [columnSettings]);
+
   // --- Grouping Logic for Render ---
   const { pinnedCols, unpinnedCols, pinnedGroups, unpinnedGroups } = useMemo(() => {
       const pCols = renderColumns.filter(c => c.pinned);
@@ -451,6 +486,15 @@ export const RealTime = () => {
 
   return (
     <div className="flex flex-col h-full bg-white shadow-sm border border-slate-200 rounded-sm">
+      <CustomColumnsModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        columns={modalColumns} 
+        onSave={handleSaveColumns}
+        // Map default user settings to ColumnDef format for reset functionality
+        defaultColumns={DEFAULT_USER_SETTINGS.map(s => ({...s, label: COLUMN_REGISTRY[s.id]?.label || s.id}))}
+      />
+
       {/* 1. Global Filter Bar */}
       <div className="h-12 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 z-20 relative">
           <div className="flex items-center gap-2">
@@ -478,28 +522,85 @@ export const RealTime = () => {
           {/* Table Container */}
           <div className="flex-1 bg-white border border-gray-200 rounded shadow-sm overflow-hidden flex flex-col min-h-0 relative">
               {/* Toolbar */}
-              <div className="px-4 py-3 border-b border-gray-200 bg-white flex justify-between items-center shrink-0">
+              <div className="px-4 py-3 border-b border-gray-200 bg-white flex flex-wrap gap-3 justify-between items-center shrink-0">
                   <div className="flex items-center gap-3">
-                      <div className="flex rounded border border-gray-300 overflow-hidden">
+                      {/* Dimension Tabs */}
+                      <div className="flex rounded-md border border-gray-200 bg-gray-50 p-0.5">
                           {['ASIN', '父ASIN', 'MSKU', 'SKU'].map((tab) => (
-                              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-1.5 text-xs font-medium border-r border-gray-300 last:border-r-0 transition-colors ${activeTab === tab ? 'bg-white text-blue-600 shadow-[inset_0_0_0_1px_#3b82f6] z-10' : 'bg-white text-gray-600 hover:text-blue-600'}`}>{tab}</button>
+                              <button 
+                                key={tab} 
+                                onClick={() => setActiveTab(tab)} 
+                                className={`px-3 py-1 text-xs font-medium rounded-sm transition-all ${
+                                    activeTab === tab 
+                                    ? 'bg-white text-blue-600 shadow-sm' 
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                              >
+                                  {tab}
+                              </button>
                           ))}
                       </div>
-                      <div className="flex items-center h-8">
-                           <div className="relative h-full">
-                               <div className="h-full flex items-center border border-r-0 border-gray-300 rounded-l px-2 bg-white hover:border-gray-400 cursor-pointer min-w-[80px] justify-between group">
-                                   <span className="text-xs text-gray-600">{searchType}</span><ChevronDown size={12} className="text-gray-400" />
-                               </div>
+
+                      {/* Search Bar */}
+                      <div className="flex items-center h-8 shadow-sm">
+                           <div className="relative h-full" ref={searchTypeRef}>
+                               <button 
+                                 onClick={() => setIsSearchTypeOpen(!isSearchTypeOpen)}
+                                 className="h-full flex items-center border border-r-0 border-gray-300 rounded-l px-3 bg-white hover:bg-gray-50 cursor-pointer min-w-[80px] justify-between transition-colors group"
+                               >
+                                   <span className="text-xs text-gray-700">{searchType}</span>
+                                   <ChevronDown size={12} className={`text-gray-400 transition-transform ${isSearchTypeOpen ? 'rotate-180 text-blue-600' : ''}`} />
+                               </button>
+                               {isSearchTypeOpen && (
+                                   <div className="absolute top-full left-0 mt-1 w-28 bg-white border border-gray-200 shadow-lg rounded z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
+                                       {['全部', 'ASIN', 'MSKU', '标题'].map(t => (
+                                           <button 
+                                             key={t}
+                                             onClick={() => { setSearchType(t); setIsSearchTypeOpen(false); }}
+                                             className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 hover:text-blue-600 transition-colors ${searchType === t ? 'text-blue-600 bg-blue-50' : 'text-gray-700'}`}
+                                           >
+                                               {t}
+                                           </button>
+                                       ))}
+                                   </div>
+                               )}
                            </div>
-                           <input type="text" className="h-full w-64 border border-gray-300 px-3 text-xs outline-none focus:border-blue-500 focus:z-10 transition-colors" placeholder="搜索内容" value={searchText} onChange={(e) => setSearchText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchData()} />
-                           <button className="h-full px-3 border border-l-0 border-gray-300 rounded-r bg-gray-50 hover:bg-gray-100 text-gray-500 flex items-center justify-center transition-colors" onClick={() => fetchData()}><Search size={14} /></button>
+                           <input 
+                             type="text" 
+                             className="h-full w-64 border border-gray-300 px-3 text-xs outline-none focus:border-blue-500 focus:z-10 transition-colors placeholder:text-gray-400 text-gray-700" 
+                             placeholder="请输入搜索内容..." 
+                             value={searchText} 
+                             onChange={(e) => setSearchText(e.target.value)} 
+                             onKeyDown={(e) => e.key === 'Enter' && fetchData()} 
+                           />
+                           <button 
+                             className="h-full px-4 border border-l-0 border-gray-300 rounded-r bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-blue-600 flex items-center justify-center transition-colors" 
+                             onClick={() => fetchData()}
+                           >
+                             <Search size={14} />
+                           </button>
                       </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                      <button className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded border border-transparent hover:border-gray-200 transition-colors"><Settings size={14} /><span>自定义列</span></button>
-                      <div className="h-4 w-px bg-gray-300 mx-1"></div>
-                      <button className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded" title="刷新" onClick={fetchData}><RefreshCw size={16} className={isSyncing ? "animate-spin text-blue-600" : ""} /></button>
-                      <button className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded"><Download size={16} /></button>
+
+                  <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded border border-gray-200 transition-colors shadow-sm"
+                      >
+                          <Settings size={14} />
+                          <span>自定义列</span>
+                      </button>
+                      <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                      <button 
+                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors" 
+                        title="刷新" 
+                        onClick={fetchData}
+                      >
+                          <RefreshCw size={16} className={isSyncing ? "animate-spin text-blue-600" : ""} />
+                      </button>
+                      <button className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors">
+                          <Download size={16} />
+                      </button>
                   </div>
               </div>
 
