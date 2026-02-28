@@ -306,10 +306,22 @@ async function runOrderSync(pool, callSellfoxApi, options = {}) {
 
             if (apiRes && apiRes.code === 0 && apiRes.data && apiRes.data.rows && apiRes.data.rows.length > 0) {
                 const orders = apiRes.data.rows;
+                const totalSize = apiRes.data.totalSize || 0;
+
+                // --- DEBUG LOGGING START ---
+                if (pageNo === 1) {
+                    console.log(`🔍 [Sync Debug] API Total Size: ${totalSize} | Range: ${dateStart} ~ ${dateEnd}`);
+                }
+                
+                const firstOrderDate = orders[0].purchaseDate;
+                const lastOrderDate = orders[orders.length - 1].purchaseDate;
+                console.log(`📄 [Sync Debug] Page ${pageNo}: Got ${orders.length} rows. Range: ${firstOrderDate} -> ${lastOrderDate}`);
+                // --- DEBUG LOGGING END ---
 
                 // --- DEAD LOOP PROTECTION ---
                 const currentFirstId = orders[0].amazonOrderId;
                 if (previousFirstOrderId === currentFirstId) {
+                    console.warn(`⚠️ [Sync Warning] Dead Loop Detected at Page ${pageNo}. Stopping.`);
                     hasMore = false;
                     break;
                 }
@@ -318,11 +330,14 @@ async function runOrderSync(pool, callSellfoxApi, options = {}) {
 
                 await conn.beginTransaction();
                 try {
+                    let pageSavedCount = 0;
                     for (const order of orders) {
                         await saveOrderToDb(conn, order);
+                        pageSavedCount++;
                     }
                     await conn.commit();
-                    totalSynced += orders.length;
+                    totalSynced += pageSavedCount;
+                    console.log(`💾 [Sync Debug] Page ${pageNo}: Saved ${pageSavedCount}/${orders.length} orders to DB.`);
                 } catch (err) {
                     await conn.rollback();
                     throw err;
@@ -335,6 +350,7 @@ async function runOrderSync(pool, callSellfoxApi, options = {}) {
                 if (orders.length < currentTryPageSize) hasMore = false;
                 else pageNo++;
             } else {
+                console.log(`🏁 [Sync Debug] No more data at Page ${pageNo}. Stopping.`);
                 hasMore = false;
             }
         }
