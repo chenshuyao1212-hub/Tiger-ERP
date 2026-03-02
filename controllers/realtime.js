@@ -50,14 +50,14 @@ const getPeriodSQL = (periodType) => {
 
         // Adjust based on period
         if (periodType === 'yesterday') {
-            startLocal.setUTCDate(startLocal.getUTCDate() - 1);
-            endLocal.setUTCDate(endLocal.getUTCDate() - 1);
+            targetLocalStart.setUTCDate(targetLocalStart.getUTCDate() - 1);
+            targetLocalEnd.setUTCDate(targetLocalEnd.getUTCDate() - 1);
         } else if (periodType === 'lastWeek') {
-            startLocal.setUTCDate(startLocal.getUTCDate() - 7);
-            endLocal.setUTCDate(endLocal.getUTCDate() - 7);
+            targetLocalStart.setUTCDate(targetLocalStart.getUTCDate() - 7);
+            targetLocalEnd.setUTCDate(targetLocalEnd.getUTCDate() - 7);
         } else if (periodType === 'lastYear') {
-            startLocal.setUTCFullYear(startLocal.getUTCFullYear() - 1);
-            endLocal.setUTCFullYear(endLocal.getUTCFullYear() - 1);
+            targetLocalStart.setUTCFullYear(targetLocalStart.getUTCFullYear() - 1);
+            targetLocalEnd.setUTCFullYear(targetLocalEnd.getUTCFullYear() - 1);
         }
 
         // 3. Convert back to UTC string for SQL
