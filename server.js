@@ -16,6 +16,7 @@ const fs = require('fs').promises;
 // NEW: Import controllers
 const realtimeController = require('./controllers/realtime');
 const ordersController = require('./controllers/orders');
+const optimizeDatabase = require('./scripts/add_indexes');
 
 const app = express();
 
@@ -256,6 +257,9 @@ async function initDB() {
                 INDEX idx_customer (customer_id)
             )
         `);
+
+        // Optimize DB (Add Indexes)
+        await optimizeDatabase(conn);
         
         conn.release();
         console.log("✅ Database: Connected & Schema Synced");
