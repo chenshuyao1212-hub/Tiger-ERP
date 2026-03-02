@@ -344,8 +344,12 @@ export const PlatformOrder = () => {
           'ASIN': 'asin',
           'MSKU': 'sku',
           'SKU': 'sku',
+          '品名': 'title',
+          '标题': 'title',
           '买家邮箱': 'buyerEmail',
-          '买家姓名': 'buyerName'
+          '买家姓名': 'buyerName',
+          '备注': 'localNote',
+          '促销编码': 'promotionIds'
       };
       return map[type] || 'amazonOrderId';
   };

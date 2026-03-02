@@ -578,22 +578,64 @@ exports.getOrderList = async (pool, callSellfoxApi, req, res) => {
 
         if (searchContent && searchContent.trim()) {
             const term = searchContent.trim();
-            // Handle Batch Search (comma separated)
+            
+            // 1. Handle Batch Search (comma/newline separated) -> Default to Order ID IN (...)
             if (term.includes(',') || term.includes('\n')) {
                 const ids = term.split(/[\n,]/).map(s => s.trim()).filter(s => s);
-                query += ` AND o.amazon_order_id IN (?)`;
-                params.push(ids);
-            } else {
+                if (ids.length > 0) {
+                    query += ` AND o.amazon_order_id IN (${ids.map(() => '?').join(',')})`;
+                    ids.forEach(id => params.push(id));
+                }
+            } 
+            // 2. Handle Single Term Search based on Type
+            else {
                 const likeTerm = `%${term}%`;
-                if (searchType === 'ASIN' || searchType === 'SKU' || searchType === 'MSKU') {
-                    query += ` AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.amazon_order_id = o.amazon_order_id AND (oi.asin LIKE ? OR oi.sku LIKE ?))`;
-                    params.push(likeTerm, likeTerm);
-                } else if (searchType === '买家邮箱') {
-                    query += ` AND o.buyer_email LIKE ?`;
-                    params.push(likeTerm);
-                } else {
-                    query += ` AND (o.amazon_order_id LIKE ? OR o.seller_order_id LIKE ?)`;
-                    params.push(likeTerm, likeTerm);
+                
+                switch (searchType) {
+                    case 'amazonOrderId':
+                        query += ` AND o.amazon_order_id LIKE ?`;
+                        params.push(likeTerm);
+                        break;
+                    case 'sellerOrderId':
+                        query += ` AND o.seller_order_id LIKE ?`;
+                        params.push(likeTerm);
+                        break;
+                    case 'buyerEmail':
+                        query += ` AND o.buyer_email LIKE ?`;
+                        params.push(likeTerm);
+                        break;
+                    case 'buyerName':
+                        query += ` AND o.buyer_name LIKE ?`;
+                        params.push(likeTerm);
+                        break;
+                    case 'localNote': // Matches '备注'
+                        query += ` AND o.local_note LIKE ?`;
+                        params.push(likeTerm);
+                        break;
+                    
+                    // --- Sub-query Fields (Order Items) ---
+                    case 'asin':
+                        query += ` AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.amazon_order_id = o.amazon_order_id AND oi.asin LIKE ?)`;
+                        params.push(likeTerm);
+                        break;
+                    case 'sku': // Matches 'MSKU' / 'SKU'
+                        query += ` AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.amazon_order_id = o.amazon_order_id AND oi.sku LIKE ?)`;
+                        params.push(likeTerm);
+                        break;
+                    case 'title': // Matches '品名' / '标题'
+                        query += ` AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.amazon_order_id = o.amazon_order_id AND oi.title LIKE ?)`;
+                        params.push(likeTerm);
+                        break;
+                    case 'promotionIds': // Matches '促销编码'
+                        query += ` AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.amazon_order_id = o.amazon_order_id AND oi.promotion_ids LIKE ?)`;
+                        params.push(likeTerm);
+                        break;
+
+                    // Default Fallback (Order ID)
+                    default:
+                        query += ` AND o.amazon_order_id LIKE ?`;
+                        params.push(likeTerm);
+                        break;
                 }
             }
         }
