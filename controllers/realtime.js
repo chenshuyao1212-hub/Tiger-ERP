@@ -1,24 +1,24 @@
 
-const MARKETPLACE_OFFSETS = {
-    'ATVPDKIKX0DER': -8, // US (PST/Standard Time) - Updated from -7 for better winter accuracy
-    'A2EUQ1WTGCTBG2': -8, // CA - Aligned with US West
-    'A1AM78C64UM0Y8': -6, // MX
-    'A2Q3Y263D00KWC': -3, // BR
-    'A1F83G8C2ARO7P': 0,  // GB (GMT)
-    'A1PA6795UKMFR9': 1,  // DE (CET)
-    'A13V1IB3VIYZZH': 1,  // FR
-    'APJ6JRA9NG5V4': 1,   // IT
-    'A1RKKUPIHCS9HS': 1,  // ES
-    'A1805IZSGTT6HS': 1,  // NL
-    'A2NODRKZP88ZB9': 1,  // SE
-    'A1C3SOZRARQ6R3': 1,  // PL
-    'A33AVAJ2CFY430': 3,  // TR
-    'A1VC38T7YXB528': 9,  // JP (JST)
-    'A39IBJ37TRP1C6': 10, // AU (AEST)
-    'A21TJRUUN4KGV': 5.5, // IN
-    'A2VIGQ35RCS4UG': 4,  // AE
-    'A17E79C6D8DWNP': 3,  // SA
-    'A19VAU5U5O7RUS': 8,  // SG
+const MARKETPLACE_TIMEZONES = {
+    'ATVPDKIKX0DER': 'America/Los_Angeles', // US
+    'A2EUQ1WTGCTBG2': 'America/Los_Angeles', // CA (approx)
+    'A1AM78C64UM0Y8': 'America/Mexico_City', // MX
+    'A2Q3Y263D00KWC': 'America/Sao_Paulo',   // BR
+    'A1F83G8C2ARO7P': 'Europe/London',       // GB
+    'A1PA6795UKMFR9': 'Europe/Berlin',       // DE
+    'A13V1IB3VIYZZH': 'Europe/Paris',        // FR
+    'APJ6JRA9NG5V4': 'Europe/Rome',          // IT
+    'A1RKKUPIHCS9HS': 'Europe/Madrid',       // ES
+    'A1805IZSGTT6HS': 'Europe/Amsterdam',    // NL
+    'A2NODRKZP88ZB9': 'Europe/Stockholm',    // SE
+    'A1C3SOZRARQ6R3': 'Europe/Warsaw',       // PL
+    'A33AVAJ2CFY430': 'Europe/Istanbul',     // TR
+    'A1VC38T7YXB528': 'Asia/Tokyo',          // JP
+    'A39IBJ37TRP1C6': 'Australia/Sydney',    // AU
+    'A21TJRUUN4KGV': 'Asia/Kolkata',         // IN
+    'A2VIGQ35RCS4UG': 'Asia/Dubai',          // AE
+    'A17E79C6D8DWNP': 'Asia/Riyadh',         // SA
+    'A19VAU5U5O7RUS': 'Asia/Singapore',      // SG
 };
 
 /**
@@ -29,15 +29,24 @@ const getPeriodSQL = (periodType) => {
     const cases = [];
     const now = new Date();
 
-    Object.entries(MARKETPLACE_OFFSETS).forEach(([mpId, offset]) => {
-        // Calculate "Local Midnight" for this marketplace
-        const localNow = new Date(now.getTime() + offset * 3600 * 1000);
+    Object.entries(MARKETPLACE_TIMEZONES).forEach(([mpId, timeZone]) => {
+        // 1. Get Offset in Hours dynamically (handles DST)
+        const getOffsetInHours = (d, tz) => {
+            const utcDate = new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const tzDate = new Date(d.toLocaleString('en-US', { timeZone: tz }));
+            return (tzDate.getTime() - utcDate.getTime()) / 3600000;
+        };
         
-        let startLocal = new Date(localNow);
-        startLocal.setUTCHours(0, 0, 0, 0); // Local Midnight
+        const offsetHours = getOffsetInHours(now, timeZone);
         
-        let endLocal = new Date(localNow);
-        endLocal.setUTCHours(23, 59, 59, 999); // Local End of Day
+        // 2. Calculate "Local Now"
+        const currentLocalTime = new Date(now.getTime() + offsetHours * 3600000);
+        
+        let targetLocalStart = new Date(currentLocalTime);
+        targetLocalStart.setUTCHours(0,0,0,0);
+        
+        let targetLocalEnd = new Date(currentLocalTime);
+        targetLocalEnd.setUTCHours(23,59,59,999);
 
         // Adjust based on period
         if (periodType === 'yesterday') {
@@ -51,8 +60,9 @@ const getPeriodSQL = (periodType) => {
             endLocal.setUTCFullYear(endLocal.getUTCFullYear() - 1);
         }
 
-        const startUTC = new Date(startLocal.getTime() - offset * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-        const endUTC = new Date(endLocal.getTime() - offset * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+        // 3. Convert back to UTC string for SQL
+        const startUTC = new Date(targetLocalStart.getTime() - offsetHours * 3600000).toISOString().slice(0, 19).replace('T', ' ');
+        const endUTC = new Date(targetLocalEnd.getTime() - offsetHours * 3600000).toISOString().slice(0, 19).replace('T', ' ');
 
         cases.push(`(marketplace_id = '${mpId}' AND purchase_date BETWEEN '${startUTC}' AND '${endUTC}')`);
     });
