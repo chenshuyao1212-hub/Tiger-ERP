@@ -21,7 +21,7 @@ const optimizeDatabase = require('./scripts/add_indexes');
 const app = express();
 
 // --- CONFIGURATION ---
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0'; 
 const PUBLIC_IP = process.env.PUBLIC_IP || '47.119.161.66';
 
