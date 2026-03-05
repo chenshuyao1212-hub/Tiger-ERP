@@ -489,6 +489,30 @@ const getDaysArray = (start: Date, end: Date) => {
   return arr;
 };
 
+const MARKETPLACE_ID_TO_NAME: Record<string, string> = {
+    'ATVPDKIKX0DER': '美国',
+    'A2EUQ1WTGCTBG2': '加拿大',
+    'A1AM78C64UM0Y8': '墨西哥',
+    'A2Q3Y263D00KWC': '巴西',
+    'A1F83G8C2ARO7P': '英国',
+    'A1PA6795UKMFR9': '德国',
+    'A13V1IB3VIYZZH': '法国',
+    'APJ6JRA9NG5V4': '意大利',
+    'A1RKKUPIHCS9HS': '西班牙',
+    'A1805IZSGTT6HS': '荷兰',
+    'A2NODRKZP88ZB9': '瑞典',
+    'A1C3SOZRARQ6R3': '波兰',
+    'A33AVAJ2CFY430': '土耳其',
+    'A1VC38T7YXB528': '日本',
+    'A39IBJ37TRP1C6': '澳大利亚',
+    'A21TJRUUN4KGV': '印度',
+    'A2VIGQ35RCS4UG': '阿联酋',
+    'A17E79C6D8DWNP': '沙特阿拉伯',
+    'A19VAU5U5O7RUS': '新加坡',
+    'A28R8C7NBKEWEA': '爱尔兰',
+    'AMEN7PMS3EDWL': '比利时'
+};
+
 export const SalesStat = () => {
   const [activeTab, setActiveTab] = useState('ASIN');
   const [activeMetric, setActiveMetric] = useState<'sales' | 'orders' | 'revenue'>('sales');
@@ -556,7 +580,7 @@ export const SalesStat = () => {
             if (activeMetric === 'orders') return dayData.orderNum;
             if (activeMetric === 'revenue') return dayData.salePrice;
             return dayData.productNum;
-          });
+          }).reverse(); // Reverse to match the descending order of table columns
 
           // Calculate trend data (last 7 days of the selected range)
           const trendData = dailyValues.slice(-7);
