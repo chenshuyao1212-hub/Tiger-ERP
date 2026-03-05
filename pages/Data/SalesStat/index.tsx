@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   ChevronDown, 
@@ -14,14 +14,18 @@ import {
   Clock,
   ExternalLink,
   ChevronRight,
-  PieChart,
   Target,
-  Play,
-  Calendar as CalendarIcon,
-  ChevronLeft
+  Play
 } from 'lucide-react';
-import { FilterSelect } from '../../../components/FilterSelect';
+import { 
+  SiteFilterDropdown, 
+  ShopFilterDropdown, 
+  DeliveryMethodFilterDropdown,
+  SalespersonFilterDropdown
+} from '../../../components/Filters';
 import { DateRangePicker } from '../../../components/DateRangePicker';
+import { CombinedSearchInput } from '../../../components/CombinedSearchInput';
+import axios from 'axios';
 
 // --- Mock Data: ASIN View ---
 const MOCK_ASIN_SALES_DATA = [
@@ -487,35 +491,130 @@ const getDaysArray = (start: Date, end: Date) => {
 
 export const SalesStat = () => {
   const [activeTab, setActiveTab] = useState('ASIN');
-  const [activeMetric, setActiveMetric] = useState<'sales' | 'orders' | 'revenue'>('sales'); // Default to sales
+  const [activeMetric, setActiveMetric] = useState<'sales' | 'orders' | 'revenue'>('sales');
   
-  // Initialize date range: Default to 2026-01-05 to 2026-01-07 as per screenshot example logic (short range) or mock data range
-  // Setting default to a 10 day range for better visualization with mock data
-  const [startDate, setStartDate] = useState(new Date(2026, 0, 5)); // Jan 5, 2026
-  const [endDate, setEndDate] = useState(new Date(2026, 0, 14));   // Jan 14, 2026
+  // Initialize date range: Default to last 7 days
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  });
+  const [endDate, setEndDate] = useState(new Date());
 
-  // Updated Data Retrieval Logic
-  const getData = () => {
-    if (activeTab === '父ASIN') {
-        switch (activeMetric) {
-            case 'orders': return MOCK_FATHER_ORDER_DATA;
-            case 'revenue': return MOCK_FATHER_REVENUE_DATA;
-            default: return MOCK_FATHER_SALES_DATA;
-        }
+  const [searchType, setSearchType] = useState('ASIN');
+  const [searchValue, setSearchValue] = useState('');
+  const [isExactSearch, setIsExactSearch] = useState(false);
+
+  // Filter States
+  const [selectedSites, setSelectedSites] = useState<string[]>([]);
+  const [selectedShops, setSelectedShops] = useState<string[]>([]);
+  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<string | null>(null);
+  const [selectedSalespersons, setSelectedSalespersons] = useState<string[]>([]);
+
+  // Data States
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalSize, setTotalSize] = useState(0);
+  const [pageNo, setPageNo] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+
+  // Fetch Data from API
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Map frontend tab to backend groupType
+      let groupType = 'asin';
+      if (activeTab === '父ASIN') groupType = 'parentAsin';
+      if (activeTab === 'MSKU') groupType = 'msku';
+      if (activeTab === 'SKU') groupType = 'sku';
+
+      // Map frontend metric to backend type
+      let type = 'productNum';
+      if (activeMetric === 'orders') type = 'orderNum';
+      if (activeMetric === 'revenue') type = 'salePrice';
+
+      const payload = {
+        type,
+        groupType,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        pageNo,
+        pageSize,
+        shopIdList: selectedShops,
+        siteList: selectedSites,
+        fulfillmentChannel: selectedDeliveryMethod,
+        searchType: searchType.toLowerCase(),
+        searchContentList: searchValue ? searchValue.split('\n').filter(Boolean) : []
+      };
+
+      const response = await axios.post('/api/sales/stat', payload);
+      if (response.data.code === 0) {
+        // Transform backend data to match frontend structure
+        const transformedData = response.data.data.rows.map((row: any, index: number) => {
+          // Extract daily values based on the active metric
+          const dailyValues = row.productSaleDayOpenVo.map((dayData: any) => {
+            if (activeMetric === 'orders') return dayData.orderNum;
+            if (activeMetric === 'revenue') return dayData.salePrice;
+            return dayData.productNum;
+          });
+
+          // Calculate trend data (last 7 days of the selected range)
+          const trendData = dailyValues.slice(-7);
+
+          // Calculate subtotal and average
+          const subtotal = dailyValues.reduce((a: number, b: number) => a + b, 0);
+          const avg = dailyValues.length > 0 ? subtotal / dailyValues.length : 0;
+
+          return {
+            id: String(index),
+            img: row.imageUrl || `https://picsum.photos/40/40?random=${index}`,
+            asin: row.asin || '-',
+            fatherAsin: row.parentAsin || '-',
+            msku: row.msku || '-',
+            skuName: row.title ? row.title.substring(0, 20) + '...' : '-',
+            title: row.title || '-',
+            site: row.shopName || '-',
+            siteCode: row.marketplaceId || '-',
+            shop: row.shopName || '-',
+            tags: '-',
+            salesperson: '-',
+            category: '-',
+            brand: '-',
+            fbaSellable: 0,
+            fbaTotal: 0,
+            awdInv: 0,
+            awdOnWay: 0,
+            trendData: trendData.length > 0 ? trendData : [0],
+            avg: Number(avg.toFixed(2)),
+            subtotal: Number(subtotal.toFixed(2)),
+            daily: dailyValues
+          };
+        });
+
+        setData(transformedData);
+        setTotalSize(response.data.data.totalSize);
+      } else {
+        console.error("Failed to fetch sales stat:", response.data.msg);
+        setData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching sales stat:", error);
+      setData([]);
+    } finally {
+      setLoading(false);
     }
-    if (activeTab === 'MSKU') {
-        switch (activeMetric) {
-            case 'orders': return MOCK_MSKU_ORDER_DATA;
-            case 'revenue': return MOCK_MSKU_REVENUE_DATA;
-            default: return MOCK_MSKU_SALES_DATA;
-        }
-    }
-    // Fallback for ASIN tab
-    if (activeMetric === 'revenue') return MOCK_ASIN_REVENUE_DATA;
-    return activeMetric === 'orders' ? MOCK_ASIN_ORDER_DATA : MOCK_ASIN_SALES_DATA;
   };
 
-  const data = getData();
+  // Trigger fetch when dependencies change
+  useEffect(() => {
+    fetchData();
+  }, [activeTab, activeMetric, startDate, endDate, pageNo, pageSize, selectedShops, selectedSites, selectedDeliveryMethod]);
+
+  // Handle Search
+  const handleSearch = () => {
+    setPageNo(1);
+    fetchData();
+  };
 
   // Dynamic Date Columns based on selected range
   const getDateColumns = () => {
@@ -536,133 +635,207 @@ export const SalesStat = () => {
   const dateColumns = getDateColumns();
 
   return (
-    <div className="flex flex-col h-full bg-white shadow-sm border border-slate-200 rounded-sm">
-      {/* 1. Top Sub-Navigation Row */}
-      <div className="px-6 py-3 bg-white flex items-center gap-6 border-b border-gray-100 text-sm font-bold">
-          {['ASIN', '父ASIN', 'MSKU', 'SKU', '店铺', '开发员', '业务员'].map((tab) => (
-              <div 
-                key={tab} 
-                onClick={() => setActiveTab(tab)}
-                className={`cursor-pointer transition-colors ${activeTab === tab ? 'text-blue-600' : 'text-gray-800 hover:text-blue-600'}`}
-              >
-                  {tab}
-              </div>
-          ))}
+    <div className="flex flex-col h-full gap-4 overflow-hidden">
+      {/* --- Module 1: Filter Control Area --- */}
+      <div className="bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col shrink-0">
+        {/* 1. Top Sub-Navigation Row */}
+        <div className="px-6 bg-white flex items-center gap-8 border-b border-gray-200 text-sm font-bold rounded-t-lg">
+            {['ASIN', '父ASIN', 'MSKU', 'SKU', '店铺', '开发员', '业务员'].map((tab) => (
+                <div 
+                  key={tab} 
+                  onClick={() => setActiveTab(tab)}
+                  className={`cursor-pointer py-3 border-b-2 transition-colors ${activeTab === tab ? 'text-orange-500 border-orange-500' : 'text-gray-800 border-transparent hover:text-orange-500'}`}
+                >
+                    {tab}
+                </div>
+            ))}
+        </div>
+
+        {/* 2. Main Action & Filter Bar */}
+        <div className="px-4 py-3 bg-white flex items-center gap-2 rounded-b-lg">
+           {/* Left: Metric Toggle */}
+           <div className="flex rounded border border-blue-600 overflow-hidden h-8 text-xs font-medium cursor-pointer shrink-0">
+               <div 
+                  onClick={() => setActiveMetric('sales')}
+                  className={`px-4 flex items-center ${activeMetric === 'sales' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'}`}
+               >
+                  销量
+               </div>
+               <div 
+                  onClick={() => setActiveMetric('orders')}
+                  className={`px-4 flex items-center border-l border-blue-600 ${activeMetric === 'orders' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'}`}
+               >
+                  订单量
+               </div>
+               <div 
+                  onClick={() => setActiveMetric('revenue')}
+                  className={`px-4 flex items-center border-l border-blue-600 ${activeMetric === 'revenue' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'}`}
+               >
+                  销售额
+               </div>
+           </div>
+
+           {/* Middle: Filters */}
+           <SiteFilterDropdown 
+              selectedSites={selectedSites} 
+              onChange={setSelectedSites} 
+              className="w-[110px] h-8"
+           />
+           <ShopFilterDropdown 
+              selectedShops={selectedShops} 
+              onChange={setSelectedShops} 
+              className="w-[120px] h-8"
+           />
+           <DeliveryMethodFilterDropdown 
+              value={selectedDeliveryMethod} 
+              onChange={setSelectedDeliveryMethod} 
+              className="w-[110px] h-8"
+           />
+           
+           {/* Product Label Placeholder */}
+           <div className="relative border border-gray-200 rounded hover:border-blue-400 transition-colors h-8 bg-white w-[140px] flex items-center px-3 cursor-pointer group">
+              <span className="text-xs text-gray-400 truncate group-hover:text-gray-600">产品标签</span>
+              <ChevronDown size={14} className="text-gray-400 ml-auto group-hover:text-gray-600" />
+           </div>
+
+           <SalespersonFilterDropdown 
+              selectedSalespersons={selectedSalespersons} 
+              onChange={setSelectedSalespersons} 
+              className="w-[130px] h-8"
+           />
+
+           <DateRangePicker 
+              value={{ start: startDate, end: endDate }}
+              onChange={({ start, end }) => {
+                  setStartDate(start);
+                  setEndDate(end);
+              }} 
+           />
+
+           {/* Right: Tools & Search */}
+           <div className="flex items-center gap-2 ml-auto">
+               {/* Currency */}
+               <div className="relative border border-gray-200 rounded hover:border-blue-400 transition-colors h-8 bg-white w-[90px] flex items-center px-2 cursor-pointer">
+                  <span className="text-xs text-gray-600 truncate">{activeTab === '父ASIN' ? 'USD' : '原币种'}</span>
+                  <ChevronDown size={14} className="text-gray-400 ml-auto" />
+               </div>
+
+               {/* Time Granularity */}
+               <div className="relative border border-gray-200 rounded hover:border-blue-400 transition-colors h-8 bg-white w-[80px] flex items-center px-2 cursor-pointer">
+                  <span className="text-xs text-gray-600 truncate">{activeTab === '父ASIN' ? 'ASIN' : '按日'}</span>
+                  <ChevronDown size={14} className="text-gray-400 ml-auto" />
+               </div>
+               
+               {/* Search Group */}
+               <div className="flex items-center gap-1">
+                   <CombinedSearchInput 
+                      searchType={searchType}
+                      onSearchTypeChange={setSearchType}
+                      searchValue={searchValue}
+                      onSearchValueChange={setSearchValue}
+                      onSearch={handleSearch}
+                      placeholder="双击可批量搜索内容"
+                      className="w-[320px]"
+                   />
+                   <button 
+                      onClick={() => setIsExactSearch(!isExactSearch)}
+                      className={`h-8 px-3 border rounded text-xs font-medium transition-colors ${isExactSearch ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                      title={isExactSearch ? "精确搜索" : "模糊搜索"}
+                   >
+                      {isExactSearch ? '精' : '模'}
+                   </button>
+                   <button onClick={handleSearch} className="h-8 w-8 flex items-center justify-center border border-gray-200 rounded bg-white hover:bg-gray-50 text-gray-500">
+                      <Search size={16} />
+                   </button>
+               </div>
+
+               {/* Advanced Filter */}
+               <button className="h-8 w-8 flex items-center justify-center border border-gray-200 rounded bg-white hover:bg-gray-50 text-gray-500" title="高级筛选">
+                  <Filter size={16} />
+               </button>
+
+               {/* Reset Button */}
+               <button className="h-8 px-3 border border-gray-200 rounded bg-white hover:bg-gray-50 text-xs text-gray-600" title="重置筛选">
+                  重置
+               </button>
+           </div>
+        </div>
       </div>
 
-      {/* 2. Main Action & Filter Bar */}
-      <div className="px-3 py-2 bg-white border-b border-gray-200 flex flex-wrap items-center gap-2">
-         {/* Toggle Group */}
-         <div className="flex rounded border border-blue-600 overflow-hidden h-7 text-xs font-medium cursor-pointer">
-             <div 
-                onClick={() => setActiveMetric('sales')}
-                className={`px-3 flex items-center ${activeMetric === 'sales' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'}`}
-             >
-                销量
-             </div>
-             <div 
-                onClick={() => setActiveMetric('orders')}
-                className={`px-3 flex items-center border-l border-blue-600 ${activeMetric === 'orders' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'}`}
-             >
-                订单量
-             </div>
-             <div 
-                onClick={() => setActiveMetric('revenue')}
-                className={`px-3 flex items-center border-l border-blue-600 ${activeMetric === 'revenue' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'}`}
-             >
-                销售额
-             </div>
-         </div>
+      {/* --- Module 2: Data Table Area --- */}
+      <div className="flex-1 bg-white shadow-sm border border-slate-200 rounded-lg flex flex-col overflow-hidden min-h-0">
+        {/* Module 2 Header: Checkboxes & Actions */}
+        <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-end gap-6 bg-white rounded-t-lg">
+           {/* Checkboxes Group */}
+           <div className="flex items-center gap-4 text-xs text-gray-600">
+               {activeTab === 'ASIN' && (
+                   <>
+                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                          <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" defaultChecked /> 
+                          <span>按ASIN汇总</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                          <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" defaultChecked /> 
+                          <span>实时统计</span>
+                          <HelpCircle size={12} className="text-gray-400" />
+                      </label>
+                   </>
+               )}
+               {activeTab === '父ASIN' && (
+                   <>
+                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                          <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" checked /> 
+                          <span>按ASIN汇总</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                          <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" checked /> 
+                          <span>实时统计</span>
+                          <HelpCircle size={12} className="text-gray-400" />
+                      </label>
+                   </>
+               )}
+               {activeTab === 'MSKU' && (
+                   <>
+                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                          <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" checked /> 
+                          <span>实时统计</span>
+                          <HelpCircle size={12} className="text-gray-400" />
+                      </label>
+                   </>
+               )}
+               <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                   <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" checked /> 
+                   <span>隐藏销量为0的产品</span>
+                   <HelpCircle size={12} className="text-gray-400" />
+               </label>
+               <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                   <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" /> 
+                   <span>测算产品</span>
+               </label>
+               <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
+                   <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" /> 
+                   <span>去除换货销量</span>
+               </label>
+           </div>
+           
+           {/* Right: Action Buttons */}
+           <div className="flex items-center gap-1 text-gray-500">
+              <button className="flex items-center gap-1 px-2 py-1 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors" title="自定义列">
+                  <Settings size={14} /> 
+                  <span className="text-xs">自定义列</span>
+              </button>
+              <div className="h-3 w-px bg-gray-200 mx-1"></div>
+              <button onClick={fetchData} className="p-1.5 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors" title="刷新">
+                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              </button>
+              <button className="p-1.5 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors" title="下载"><Download size={14}/></button>
+              <button className="p-1.5 hover:text-blue-600 hover:bg-gray-50 rounded transition-colors" title="帮助"><HelpCircle size={14}/></button>
+           </div>
+        </div>
 
-         <div className="h-4 w-px bg-gray-200 mx-1"></div>
-         
-         <FilterSelect label="全部站点" width="90px" />
-         <FilterSelect label="全部店铺" width="100px" />
-         <FilterSelect label="发货方式" width="90px" />
-         <FilterSelect label="请选择产品标签" width="120px" />
-         <FilterSelect label="请选择业务员" width="110px" />
-
-         <DateRangePicker 
-            startDate={startDate} 
-            endDate={endDate} 
-            onApply={(start, end) => {
-                setStartDate(start);
-                setEndDate(end);
-            }} 
-         />
-
-         <FilterSelect label={activeTab === '父ASIN' ? 'USD' : '原币种'} width="80px" />
-         <FilterSelect label={activeTab === '父ASIN' ? 'ASIN' : '按日'} width="70px" />
-         
-         {activeTab === '父ASIN' && <div className="flex items-center gap-2 ml-1 text-xs text-gray-500 border border-gray-200 rounded px-2 h-7 bg-white"><input type="checkbox" /> 聚合可能变体</div>}
-
-         <div className="flex items-center border border-gray-200 rounded ml-1 hover:border-blue-400 transition-colors h-7 bg-white">
-            <div className="relative h-full border-r border-gray-200 bg-gray-50/50">
-                <select className="appearance-none bg-transparent text-xs pl-2 pr-6 focus:outline-none text-gray-600 h-full cursor-pointer w-16">
-                    <option>{activeTab === '父ASIN' ? 'ASIN' : (activeTab === 'MSKU' ? 'MSKU' : 'ASIN')}</option>
-                </select>
-                <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-            <div className="relative h-full flex items-center">
-                <input type="text" className="w-32 text-xs px-2 outline-none text-gray-600 h-full placeholder:text-gray-300" placeholder="双击可批量搜索内容" />
-            </div>
-            <button className="px-2 h-full bg-gray-50 hover:bg-gray-100 border-l border-gray-200 text-xs text-gray-600 font-medium" title="精确搜索">精</button>
-         </div>
-
-         <button className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><Filter size={14}/></button>
-         <button className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><RefreshCw size={14}/></button>
-         
-         {/* Checkboxes Group (Common) */}
-         <div className="flex items-center gap-3 ml-auto text-xs text-gray-600 hidden 2xl:flex">
-             {activeTab === 'ASIN' && (
-                 <>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" defaultChecked /> 按ASIN汇总
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" defaultChecked /> 实时统计 <HelpCircle size={10} className="text-gray-400" />
-                    </label>
-                 </>
-             )}
-             {activeTab === '父ASIN' && (
-                 <>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" checked /> 按ASIN汇总
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" checked /> 实时统计 <HelpCircle size={10} className="text-gray-400" />
-                    </label>
-                 </>
-             )}
-             {activeTab === 'MSKU' && (
-                 <>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" checked /> 实时统计 <HelpCircle size={10} className="text-gray-400" />
-                    </label>
-                 </>
-             )}
-             <label className="flex items-center gap-1 cursor-pointer">
-                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" checked /> 隐藏销量为0的产品 <HelpCircle size={10} className="text-gray-400" />
-             </label>
-             <label className="flex items-center gap-1 cursor-pointer">
-                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" /> 测算产品
-             </label>
-             <label className="flex items-center gap-1 cursor-pointer">
-                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5" /> 去除换货销量
-             </label>
-         </div>
-         
-         <div className="flex items-center gap-1 ml-2 text-gray-400 border-l border-gray-200 pl-2">
-            <button className="p-1 hover:text-blue-600 hover:bg-gray-100 rounded"><Settings size={14} /> <span className="text-xs ml-1 text-gray-600">自定义列</span></button>
-            <button className="p-1 hover:text-blue-600 hover:bg-gray-100 rounded"><RefreshCw size={14}/></button>
-            <button className="p-1 hover:text-blue-600 hover:bg-gray-100 rounded"><Download size={14}/></button>
-            <button className="p-1 hover:text-blue-600 hover:bg-gray-100 rounded"><HelpCircle size={14}/></button>
-         </div>
-      </div>
-
-      {/* 3. Table */}
-      <div className="flex-1 overflow-auto bg-white scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent relative">
-        <table className="w-full text-xs text-left border-separate border-spacing-0 min-w-[3200px]">
+        {/* 3. Table Content */}
+        <div className="flex-1 overflow-auto bg-white scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent relative rounded-b-lg">
+          <table className="w-full text-xs text-left border-separate border-spacing-0 min-w-[3200px]">
            <thead className="bg-gray-50 sticky top-0 z-40 text-gray-600 font-medium shadow-sm">
              <tr>
                {/* --- Fixed Columns Logic --- */}
@@ -1115,25 +1288,53 @@ export const SalesStat = () => {
       <div className="px-4 py-2 border-t border-gray-200 bg-white flex justify-between items-center text-xs select-none">
          <div></div> {/* Spacer */}
          <div className="flex items-center gap-4">
-          <span className="text-gray-500">共 {activeTab === 'ASIN' && activeMetric === 'orders' ? '28' : (activeTab === 'MSKU' ? '43' : (activeTab === 'ASIN' ? '32' : (activeTab === '父ASIN' ? '25' : '32')))} 条</span>
+          <span className="text-gray-500">共 {totalSize} 条</span>
           
           <div className="flex items-center gap-1">
-             <button className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 text-gray-400 disabled:opacity-50" disabled>&lt;</button>
-             <button className="w-6 h-6 flex items-center justify-center border border-blue-600 bg-blue-600 text-white rounded">1</button>
-             <button className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 hover:text-blue-600 text-gray-600">2</button>
-             <button className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 hover:text-blue-600 text-gray-600">&gt;</button>
+             <button 
+                onClick={() => setPageNo(Math.max(1, pageNo - 1))}
+                disabled={pageNo === 1 || loading}
+                className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 text-gray-400 disabled:opacity-50"
+             >
+                 &lt;
+             </button>
+             <button className="w-6 h-6 flex items-center justify-center border border-blue-600 bg-blue-600 text-white rounded">{pageNo}</button>
+             <button 
+                onClick={() => setPageNo(pageNo + 1)}
+                disabled={pageNo * pageSize >= totalSize || loading}
+                className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 hover:text-blue-600 text-gray-600 disabled:opacity-50"
+             >
+                 &gt;
+             </button>
           </div>
 
-          <select className="border border-gray-200 rounded px-1 py-0.5 outline-none text-gray-600 hover:border-blue-400 cursor-pointer">
-            <option>20条/页</option>
-            <option>50条/页</option>
+          <select 
+             value={pageSize}
+             onChange={(e) => {
+                 setPageSize(Number(e.target.value));
+                 setPageNo(1);
+             }}
+             className="border border-gray-200 rounded px-1 py-0.5 outline-none text-gray-600 hover:border-blue-400 cursor-pointer"
+          >
+            <option value={20}>20条/页</option>
+            <option value={50}>50条/页</option>
+            <option value={100}>100条/页</option>
           </select>
 
           <div className="flex items-center gap-1 text-gray-500">
-             前往 <input type="text" className="w-8 h-5 border border-gray-200 text-center text-xs rounded outline-none focus:border-blue-500" defaultValue="1" /> 页
+             前往 <input 
+                     type="number" 
+                     className="w-12 h-5 border border-gray-200 text-center text-xs rounded outline-none focus:border-blue-500" 
+                     value={pageNo}
+                     onChange={(e) => {
+                         const val = parseInt(e.target.value);
+                         if (val > 0) setPageNo(val);
+                     }}
+                  /> 页
           </div>
         </div>
       </div>
     </div>
+  </div>
   );
 };

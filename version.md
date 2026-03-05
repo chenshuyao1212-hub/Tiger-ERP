@@ -57,6 +57,18 @@
     - **Change**: Generated detailed PRD and Status Assessment Report (`requirements.md`).
 - **Q20260119V20**: **Code Review & Status Check**.
     - **Status**: Codebase reviewed. No new feature changes. Ready for GitHub sync once authentication is resolved.
+- **Q20260119V21**: **Refactored PlatformOrder Page**.
+    - **Change**: Extracted `DateRangePicker` component for reusable date selection logic.
+    - **Change**: Extracted `CombinedSearchInput` component for reusable search input logic.
+    - **Change**: Updated `PlatformOrder` to use these components, improving code maintainability and preparing for Sales Statistics page.
+    - **Fix**: Added robust null checks in `getInitialState` to prevent crashes when restoring legacy or incomplete data from `localStorage`.
+- **Q20260119V22**: **Sales Statistics Page Frontend-Backend Integration**.
+    - **Change**: Removed mock data from `SalesStat` component.
+    - **Change**: Implemented data fetching using `axios` from `/api/sales/stat`.
+    - **Change**: Mapped frontend filters (date range, active tab, active metric, search content) to backend parameters.
+    - **Change**: Implemented dynamic table rendering based on `activeTab` (ASIN, MSKU, 父ASIN) and `activeMetric` (销量, 销售额, 订单量).
+    - **Change**: Added loading and empty states handling.
+    - **Change**: Integrated pagination with backend `totalSize`.
 
 ## Backend Versions
 - **H20260119V1**: Initial implementation of RealTime controller and API endpoints.
@@ -139,3 +151,8 @@
     - **Change**: Generated Database Design Schema (`database.md`).
 - **H20260119V30**: **Code Review & Status Check**.
     - **Status**: Codebase reviewed. No new feature changes. Ready for GitHub sync once authentication is resolved.
+- **H20260119V31**: **No Changes**.
+    - **Status**: Backend remains unchanged. Compatible with frontend Q20260119V21.
+- **H20260119V32**: **Sales Statistics API Implementation**.
+    - **Feature**: Implemented `/api/sales/stat` endpoint to serve data for the Sales Statistics page.
+    - **Logic**: Handles filtering by date range, dimensions (ASIN, MSKU, 父ASIN), metrics, and search terms. Returns structured data including trend charts, summary, and daily details.

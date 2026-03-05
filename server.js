@@ -16,6 +16,7 @@ const fs = require('fs').promises;
 // NEW: Import controllers
 const realtimeController = require('./controllers/realtime');
 const ordersController = require('./controllers/orders');
+const salesStatController = require('./controllers/salesStat');
 const optimizeDatabase = require('./scripts/add_indexes');
 
 const app = express();
@@ -752,6 +753,9 @@ app.get('/api/payment/balance', async (req, res) => {
 
 // *** UPDATED REAL-TIME DATA ENDPOINT (Using Controller) ***
 app.post('/api/realtime/data', (req, res) => realtimeController.getRealTimeData(pool, req, res));
+
+// *** NEW SALES STATISTICS ENDPOINT ***
+app.post('/api/sales/stat', (req, res) => salesStatController.getSalesStat(pool, req, res));
 
 app.use(express.static(path.join(__dirname), { extensions: ['html', 'htm', 'js', 'css', 'json', 'png', 'jpg'] }));
 

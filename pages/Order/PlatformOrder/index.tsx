@@ -38,6 +38,8 @@ import {
   StatusFilterDropdown, 
   DeliveryMethodFilterDropdown 
 } from '../../../components/Filters';
+import { DateRangePicker } from '../../../components/DateRangePicker';
+import { CombinedSearchInput } from '../../../components/CombinedSearchInput';
 import { ActionButton } from '../../../components/ActionButton';
 import { PageSizeSelector } from '../../../components/PageSizeSelector';
 import { CustomColumnsModal } from '../../../components/CustomColumnsModal';
@@ -227,16 +229,21 @@ export const PlatformOrder = () => {
           const saved = localStorage.getItem(STORAGE_KEY);
           if (saved) {
               const parsed = JSON.parse(saved);
-              return {
-                  ...parsed,
-                  dateRange: {
-                      start: new Date(parsed.dateRange.start),
-                      end: new Date(parsed.dateRange.end)
-                  },
-                  restored: true
-              };
+              // Safely check for dateRange existence
+              if (parsed.dateRange && parsed.dateRange.start && parsed.dateRange.end) {
+                  return {
+                      ...parsed,
+                      dateRange: {
+                          start: new Date(parsed.dateRange.start),
+                          end: new Date(parsed.dateRange.end)
+                      },
+                      restored: true
+                  };
+              }
           }
-      } catch(e) {}
+      } catch(e) {
+          console.warn("Failed to restore state", e);
+      }
       return {
           timeType: '订购时间',
           // Default: Last 30 days based on Local Time
@@ -259,24 +266,12 @@ export const PlatformOrder = () => {
   const [isTimeTypeOpen, setIsTimeTypeOpen] = useState(false);
   const timeTypeRef = useRef<HTMLDivElement>(null);
   
-  const [dateRange, setDateRange] = useState(initialState.dateRange);
+  const [dateRange, setDateRange] = useState(initialState?.dateRange || { start: getLocalDate(-29), end: getLocalDate(0) });
   
   const [isUnlimitedTime, setIsUnlimitedTime] = useState(initialState.isUnlimitedTime);
 
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
-  const [pickerViewDate, setPickerViewDate] = useState(initialState.dateRange.end); 
-  const [selectingStart, setSelectingStart] = useState(true); 
-  const [pickerMode, setPickerMode] = useState<'day' | 'week' | 'month' | 'quarter' | 'year'>('day');
-  const [hoverDate, setHoverDate] = useState<Date | null>(null);
-
   const [searchType, setSearchType] = useState(initialState.searchType);
-  const [isSearchTypeOpen, setIsSearchTypeOpen] = useState(false);
-  const searchTypeRef = useRef<HTMLDivElement>(null);
-
   const [searchValue, setSearchValue] = useState(initialState.searchValue);
-  const [isBatchSearchOpen, setIsBatchSearchOpen] = useState(false);
-  const batchSearchRef = useRef<HTMLDivElement>(null);
   
   const [selectedSalespersons, setSelectedSalespersons] = useState<string[]>(initialState.selectedSalespersons);
   const [selectedSites, setSelectedSites] = useState<string[]>(initialState.selectedSites);
@@ -303,15 +298,6 @@ export const PlatformOrder = () => {
           }
           if (timeTypeRef.current && !timeTypeRef.current.contains(target)) {
               setIsTimeTypeOpen(false);
-          }
-          if (datePickerRef.current && !datePickerRef.current.contains(target)) {
-              setIsDatePickerOpen(false);
-          }
-          if (searchTypeRef.current && !searchTypeRef.current.contains(target)) {
-              setIsSearchTypeOpen(false);
-          }
-          if (batchSearchRef.current && !batchSearchRef.current.contains(target)) {
-              setIsBatchSearchOpen(false);
           }
       }
       document.addEventListener("mousedown", handleClickOutside);
@@ -704,7 +690,6 @@ export const PlatformOrder = () => {
       } else {
           fetchDbOrders(false); 
       }
-      setIsBatchSearchOpen(false);
   };
 
   const handleEraSwitch = (mode: 'current' | 'history') => {
@@ -721,167 +706,6 @@ export const PlatformOrder = () => {
           });
       }
       setCurrentPage(1); 
-  };
-
-  const handleDatePreset = (preset: string | number) => {
-    let newStart = getLocalDate();
-    let newEnd = getLocalDate();
-
-    if (preset === '今天') {
-        newStart = getLocalDate(0);
-        newEnd = getLocalDate(0);
-    } else if (preset === '昨天') {
-        // USE LOCAL TIME: 
-        // This reflects physical "Yesterday" for the user.
-        // It might be "Today" in US (still yesterday relative to US), but user sees local yesterday.
-        newStart = getLocalDate(-1);
-        newEnd = getLocalDate(-1); 
-    } else if (typeof preset === 'number') {
-        newEnd = getLocalDate(0); 
-        newStart = getLocalDate(-(preset - 1));
-    } else {
-        const num = parseInt(String(preset).match(/\d+/)?.[0] || '0');
-        if (num > 0) {
-            newEnd = getLocalDate(0);
-            newStart = getLocalDate(-(num - 1));
-        }
-    }
-    
-    setDateRange({ start: newStart, end: newEnd });
-    setIsDatePickerOpen(false);
-  };
-
-  const handleMonthPreset = (offset: number) => {
-      const date = getLocalDate(); 
-      date.setMonth(date.getMonth() + offset);
-      const start = new Date(date.getFullYear(), date.getMonth(), 1);
-      const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-      setDateRange({ start, end });
-      setIsDatePickerOpen(false);
-  };
-
-  const handleCalendarSelect = (date: Date) => {
-      const selectedDate = new Date(date);
-      selectedDate.setHours(0,0,0,0);
-
-      if (pickerMode === 'week') {
-          const day = selectedDate.getDay();
-          const diff = selectedDate.getDate() - day + (day === 0 ? -6 : 1);
-          const start = new Date(selectedDate);
-          start.setDate(diff);
-          const end = new Date(start);
-          end.setDate(start.getDate() + 6);
-          end.setHours(23,59,59,999);
-          setDateRange({ start, end });
-          setIsDatePickerOpen(false);
-      } else {
-          if (selectingStart) {
-              setDateRange({ start: selectedDate, end: selectedDate });
-              setSelectingStart(false);
-          } else {
-              let start = new Date(dateRange.start);
-              let end = selectedDate;
-              if (end < start) {
-                  const temp = start;
-                  start = end;
-                  end = temp;
-              }
-              end.setHours(23,59,59,999);
-              setDateRange({ start, end });
-              setSelectingStart(true);
-              setIsDatePickerOpen(false);
-          }
-      }
-  };
-
-  const renderCalendar = (offsetYear: number, offsetMonth: number) => {
-      const viewDate = new Date(pickerViewDate);
-      viewDate.setFullYear(viewDate.getFullYear() + offsetYear);
-      if (pickerMode === 'day' || pickerMode === 'week') {
-          viewDate.setMonth(viewDate.getMonth() + offsetMonth);
-      }
-      const year = viewDate.getFullYear();
-      const month = viewDate.getMonth();
-
-      if (pickerMode === 'day' || pickerMode === 'week') {
-          const firstDay = new Date(year, month, 1).getDay();
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
-          const prevMonthLastDate = new Date(year, month, 0).getDate();
-          const days = [];
-          const startOffset = (firstDay + 6) % 7; 
-          for(let i=startOffset-1; i>=0; i--) { days.push({ d: prevMonthLastDate - i, type: 'prev' }); }
-          for(let i=1; i<=daysInMonth; i++) { days.push({ d: i, type: 'curr' }); }
-          const remaining = 42 - days.length;
-          for(let i=1; i<=remaining; i++) { days.push({ d: i, type: 'next' }); }
-
-          return (
-              <div className="w-[280px]">
-                  <div className="flex justify-between items-center mb-4 px-2 select-none">
-                      <div className="flex gap-2 text-gray-400">
-                          {(pickerMode === 'week' || offsetMonth === 0) && <ChevronsLeft size={16} className="cursor-pointer hover:text-gray-600" onClick={(e) => { e.stopPropagation(); setPickerViewDate(new Date(year-1, month, 1)); }} />}
-                          {(pickerMode === 'week' || offsetMonth === 0) && <ChevronLeft size={16} className="cursor-pointer hover:text-gray-600" onClick={(e) => { e.stopPropagation(); setPickerViewDate(new Date(year, month-1, 1)); }} />}
-                      </div>
-                      <div className="font-bold text-sm text-gray-800">{year} 年 {month + 1} 月</div>
-                      <div className="flex gap-2 text-gray-400">
-                          {(pickerMode === 'week' || offsetMonth === 1) && <ChevronRight size={16} className="cursor-pointer hover:text-gray-600" onClick={(e) => { e.stopPropagation(); setPickerViewDate(new Date(year, month-1, 1)); }} />} 
-                          {(pickerMode === 'week' || offsetMonth === 1) && <ChevronsRight size={16} className="cursor-pointer hover:text-gray-600" onClick={(e) => { e.stopPropagation(); setPickerViewDate(new Date(year+1, month-2, 1)); }} />}
-                      </div>
-                  </div>
-                  <div className="grid grid-cols-7 text-center text-sm text-gray-800 mb-2 font-medium">
-                      {['一','二','三','四','五','六','日'].map(d => <div key={d} className="h-8 leading-8">{d}</div>)}
-                  </div>
-                  <div className="grid grid-cols-7 text-center text-sm gap-y-1">
-                      {days.map((item, i) => {
-                          const currentD = new Date(year, item.type === 'prev' ? month - 1 : (item.type === 'next' ? month + 1 : month), item.d);
-                          let isStart = false; let isEnd = false; let isInRange = false;
-                          if (pickerMode === 'week') {
-                              if (dateRange.start && dateRange.end) {
-                                  const cTime = currentD.setHours(0,0,0,0);
-                                  const sTime = new Date(dateRange.start).setHours(0,0,0,0);
-                                  const eTime = new Date(dateRange.end).setHours(0,0,0,0);
-                                  if (cTime >= sTime && cTime <= eTime) {
-                                      isInRange = true;
-                                      if (cTime === sTime) isStart = true;
-                                      if (cTime === eTime) isEnd = true;
-                                  }
-                              }
-                          } else {
-                              const cTime = currentD.setHours(0,0,0,0);
-                              const sTime = new Date(dateRange.start).setHours(0,0,0,0);
-                              const eTime = new Date(dateRange.end).setHours(0,0,0,0);
-                              if (cTime === sTime) isStart = true;
-                              if (cTime === eTime) isEnd = true;
-                              if (cTime > sTime && cTime < eTime) isInRange = true;
-                          }
-                          let containerClass = '';
-                          let textClass = 'text-gray-700 hover:bg-gray-100 rounded-full';
-                          if (pickerMode === 'week') {
-                              if (isInRange) {
-                                  containerClass = 'bg-blue-600'; textClass = 'text-white font-bold';
-                                  if (isStart) containerClass += ' rounded-l-full';
-                                  else if (isEnd) containerClass += ' rounded-r-full';
-                              }
-                          } else {
-                              if (isStart) { containerClass = isEnd ? '' : 'bg-blue-50 rounded-l-full'; textClass = 'bg-blue-600 text-white rounded-full shadow-sm relative z-10'; }
-                              else if (isEnd) { containerClass = 'bg-blue-50 rounded-r-full'; textClass = 'bg-blue-600 text-white rounded-full shadow-sm relative z-10'; }
-                              else if (isInRange) { containerClass = 'bg-blue-50'; textClass = 'text-gray-700'; }
-                              else if (item.type !== 'curr') { textClass = 'text-gray-300'; }
-                          }
-                          return (
-                              <div key={i} className={`h-8 w-full flex items-center justify-center cursor-pointer ${containerClass}`}
-                                onClick={(e) => { e.stopPropagation(); handleCalendarSelect(currentD); }}
-                                onMouseEnter={() => setHoverDate(currentD)}
-                                onMouseLeave={() => setHoverDate(null)}
-                              >
-                                  <span className={`w-8 h-8 flex items-center justify-center transition-colors ${textClass}`}>{item.d}</span>
-                              </div>
-                          );
-                      })}
-                  </div>
-              </div>
-          )
-      } 
-      return null;
   };
 
   const renderCellContent = (colId: string, order: any) => {
@@ -1153,7 +977,7 @@ export const PlatformOrder = () => {
               {/* ... (Date picker code unchanged) ... */}
               <div className="relative border-r border-gray-200 h-full" ref={timeTypeRef}>
                 <button 
-                  onClick={() => { setIsTimeTypeOpen(!isTimeTypeOpen); setIsDatePickerOpen(false); }}
+                  onClick={() => { setIsTimeTypeOpen(!isTimeTypeOpen); }}
                   className={`h-full px-2 flex items-center gap-1 text-xs text-gray-700 hover:bg-gray-50 min-w-[80px] justify-between ${isTimeTypeOpen ? 'bg-blue-50 text-blue-600' : ''}`}
                 >
                   <span className="truncate">{timeType}</span>
@@ -1174,137 +998,22 @@ export const PlatformOrder = () => {
                 )}
               </div>
 
-              <div className="relative flex-1 h-full" ref={datePickerRef}>
-                  <div 
-                    className="flex items-center px-2 cursor-pointer hover:bg-gray-50 h-full min-w-[170px]"
-                    onClick={() => { 
-                        setIsDatePickerOpen(!isDatePickerOpen); 
-                        setIsTimeTypeOpen(false); 
-                    }}
-                  >
-                     <Calendar size={12} className="text-gray-400 mr-2" />
-                     <span className="text-xs text-gray-600">{formatDate(dateRange.start)} ~ {formatDate(dateRange.end)}</span>
-                  </div>
-
-                  {isDatePickerOpen && (
-                     <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-md z-50 flex animate-in fade-in zoom-in-95 duration-100 origin-top-left">
-                        <div className="w-20 py-2 border-r border-gray-100 flex flex-col text-sm text-gray-600">
-                            {['按天', '按周', '按月', '按季', '按年'].map(mode => (
-                                <button 
-                                    key={mode} 
-                                    onClick={() => {
-                                        setPickerMode(mode === '按天' ? 'day' : mode === '按周' ? 'week' : mode === '按月' ? 'month' : mode === '按季' ? 'quarter' : 'year');
-                                    }}
-                                    className={`text-left px-4 py-2 hover:text-blue-600 transition-colors ${(pickerMode === 'day' && mode==='按天') || (pickerMode==='week' && mode==='按周') || (pickerMode==='month' && mode==='按月') || (pickerMode==='quarter' && mode==='按季') || (pickerMode==='year' && mode==='按年') ? 'text-blue-600 font-medium bg-blue-50/50' : ''}`}
-                                >
-                                    {mode}
-                                </button>
-                            ))}
-                        </div>
-
-                        {pickerMode === 'day' && (
-                            <div className="w-32 py-2 border-r border-gray-100 flex flex-col text-sm text-gray-600 gap-1 overflow-y-auto max-h-[360px]">
-                                {['今天', '昨天', '最近7天', '最近14天', '最近30天', '最近60天'].map(p => (
-                                    <button key={p} onClick={() => handleDatePreset(p)} className="text-left px-4 py-1.5 hover:text-blue-600 hover:bg-gray-50 transition-colors">{p}</button>
-                                ))}
-                                <div className="h-px bg-gray-100 my-1 mx-2"></div>
-                                {['本周', '上周', '本月', '上月'].map(p => (
-                                    <button key={p} onClick={() => {
-                                        if(p.includes('月')) handleMonthPreset(p==='本月'?0:-1);
-                                        else handleDatePreset(7); 
-                                    }} className="text-left px-4 py-1.5 hover:text-blue-600 hover:bg-gray-50 transition-colors">{p}</button>
-                                ))}
-                            </div>
-                        )}
-                        
-                        <div className="p-4 bg-white flex gap-8">
-                            {renderCalendar(0, 0)}
-                            {(pickerMode === 'day' || pickerMode === 'month' || pickerMode === 'quarter') && renderCalendar(pickerMode === 'day' ? 0 : 1, pickerMode === 'day' ? 1 : 0)}
-                        </div>
-                     </div>
-                  )}
-              </div>
+              <DateRangePicker 
+                value={dateRange} 
+                onChange={setDateRange} 
+                className="h-full border-none"
+              />
            </div>
            
            {/* ... Search Inputs ... */}
-           <div className="flex items-center border border-gray-200 rounded ml-2 hover:border-blue-400 transition-colors h-7 bg-white relative">
-              <div className="relative border-r border-gray-200 h-full" ref={searchTypeRef}>
-                <button 
-                  onClick={() => setIsSearchTypeOpen(!isSearchTypeOpen)}
-                  className={`h-full px-2 flex items-center gap-1 text-xs text-gray-700 hover:bg-gray-50 min-w-[80px] justify-between ${isSearchTypeOpen ? 'bg-blue-50 text-blue-600' : ''}`}
-                >
-                  <span className="truncate">{searchType}</span>
-                  <ChevronDown size={12} className={`transition-transform flex-shrink-0 ${isSearchTypeOpen ? 'rotate-180 text-blue-600' : 'text-gray-400'}`} />
-                </button>
-                {isSearchTypeOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-32 bg-white border border-gray-200 shadow-xl rounded z-50 py-1 animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
-                    {['订单号', '卖家订单号', 'ASIN', '父ASIN', 'MSKU', 'SKU', '品名', '标题', '买家邮箱', '备注', '促销编码', '物流商', '运单号'].map(t => (
-                      <button 
-                        key={t}
-                        onClick={() => { setSearchType(t); setIsSearchTypeOpen(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 hover:text-blue-600 transition-colors ${searchType === t ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600'}`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <input 
-                type="text" 
-                className="w-40 text-xs px-2 py-1 outline-none text-gray-700 placeholder:text-gray-300 h-full" 
-                placeholder="双击批量搜索内容" 
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                onDoubleClick={() => { setIsBatchSearchOpen(true); setIsSearchTypeOpen(false); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-              />
-              <button 
-                onClick={handleSearch}
-                className="px-3 h-full bg-blue-600 hover:bg-blue-700 border-l border-blue-600 text-white flex items-center justify-center transition-colors" 
-                title="搜索"
-              >
-                <Search size={14} />
-              </button>
-
-              {isBatchSearchOpen && (
-                  <div ref={batchSearchRef} className="absolute -top-[1px] -left-[1px] w-[320px] bg-white border border-gray-200 shadow-xl rounded-md z-[70] flex flex-col animate-in fade-in zoom-in-95 duration-100">
-                      <div className="relative p-3 pb-0">
-                          <div className="absolute top-3 left-3 text-gray-400 pointer-events-none"><LayoutGrid size={14} /></div>
-                          <div className="absolute top-3 right-3 text-gray-400 pointer-events-none"><Search size={14} /></div>
-                          <textarea 
-                              className="w-full h-64 pl-6 pr-6 text-xs text-gray-700 placeholder:text-gray-400 outline-none resize-none leading-relaxed border-none scrollbar-thin scrollbar-thumb-gray-200"
-                              placeholder="回车换行，最多支持200&#10;(支持excel复制粘贴)"
-                              value={searchValue}
-                              onChange={(e) => setSearchValue(e.target.value)}
-                              autoFocus
-                          />
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-3 border-t border-gray-100 mt-2 bg-gray-50/50 rounded-b-md">
-                          <button 
-                            onClick={() => setSearchValue('')}
-                            className="px-3 py-1.5 border border-gray-300 bg-white rounded text-xs text-gray-600 hover:bg-gray-50 shadow-sm"
-                          >
-                              清空
-                          </button>
-                          <div className="flex gap-2">
-                              <button 
-                                onClick={() => setIsBatchSearchOpen(false)}
-                                className="px-3 py-1.5 border border-gray-300 bg-white rounded text-xs text-gray-600 hover:bg-gray-50 shadow-sm"
-                              >
-                                  关闭
-                              </button>
-                              <button 
-                                onClick={handleSearch}
-                                className="px-4 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 shadow-sm"
-                              >
-                                  搜索
-                              </button>
-                          </div>
-                      </div>
-                  </div>
-              )}
-           </div>
+           <CombinedSearchInput
+             searchType={searchType}
+             onSearchTypeChange={setSearchType}
+             searchValue={searchValue}
+             onSearchValueChange={setSearchValue}
+             onSearch={handleSearch}
+             className="ml-2"
+           />
 
            <div className="flex items-center gap-2 ml-2">
              <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">

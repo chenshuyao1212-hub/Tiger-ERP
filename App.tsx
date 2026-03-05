@@ -120,7 +120,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 font-sans">
+    <div className="h-screen flex flex-col bg-slate-50 text-slate-800 font-sans overflow-hidden">
       
       {/* --- Top Header (Dark Blue) --- */}
       <header className="bg-[#0f172a] text-white shadow-sm z-50 sticky top-0">

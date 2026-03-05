@@ -126,7 +126,13 @@ The backend wraps CaiGou API calls to handle token management securely.
     *   **Body**: `{ sites: [], shops: [], salespersons: [] }`
     *   **Response**: `{ success: true, rows: [...], summary: {...} }`
 
-### 3.6 Common Dictionaries (New)
+### 3.6 Sales Statistics Data
+*   **POST /api/sales/stat**:
+    *   **Description**: Returns sales statistics data aggregated by ASIN, MSKU, or Father ASIN.
+    *   **Body**: `{ dateRange: {startDate, endDate}, activeTab, activeMetric, searchContent, pageNo, pageSize }`
+    *   **Response**: `{ success: true, data: [...], totalSize: number }`
+
+### 3.7 Common Dictionaries (New)
 *   **GET /api/common/sites**: Returns hierarchical list of regions and sites (US, UK, DE, etc.).
 *   **GET /api/common/statuses**: Returns list of order statuses (Pending, Shipped, etc.).
 *   **GET /api/common/delivery-methods**: Returns delivery methods (FBA, FBM).
