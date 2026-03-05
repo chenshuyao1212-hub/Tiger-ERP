@@ -10,7 +10,6 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const crypto = require('crypto');
 const path = require('path');
-const esbuild = require('esbuild');
 const fs = require('fs').promises;
 
 // NEW: Import controllers
@@ -73,8 +72,6 @@ const tokenCache = {
     sellfox: { accessToken: null, expiresAt: 0 },
     caigou: { accessToken: null, expiresAt: 0 }
 };
-
-const fileCache = new Map();
 
 const DB_CONFIG = {
     host: process.env.DB_HOST || '127.0.0.1', 
@@ -268,51 +265,6 @@ async function initDB() {
         console.error("❌ Database: Connection Failed -", e.message);
     }
 }
-
-app.use(async (req, res, next) => {
-    const urlPath = req.path;
-    if (urlPath === '/') return next();
-    if (urlPath.startsWith('/api') || /\.(css|png|jpg|json|svg)$/.test(urlPath)) {
-        return next();
-    }
-
-    const safePath = path.join(__dirname, urlPath);
-    
-    const resolveFile = async (p) => {
-        try {
-            const stats = await fs.stat(p);
-            return { path: p, loader: path.extname(p).slice(1), mtime: stats.mtimeMs };
-        } catch { return null; }
-    };
-
-    let target = null;
-    if (urlPath.endsWith('.tsx') || urlPath.endsWith('.ts')) {
-        target = await resolveFile(safePath);
-    } else {
-        target = await resolveFile(safePath + '.tsx') || 
-                 await resolveFile(path.join(safePath, 'index.tsx')) || 
-                 await resolveFile(path.join(safePath, 'index.ts'));
-    }
-
-    if (target) {
-        try {
-            const cached = fileCache.get(target.path);
-            if (cached && cached.mtime === target.mtime) {
-                res.type('js');
-                return res.send(cached.code);
-            }
-            const content = await fs.readFile(target.path, 'utf-8');
-            const result = await esbuild.transform(content, { loader: target.loader, format: 'esm', target: 'es2020' });
-            fileCache.set(target.path, { mtime: target.mtime, code: result.code });
-            res.type('js'); 
-            return res.send(result.code);
-        } catch (e) {
-            console.error(`Compilation Error for ${urlPath}: ${e.message}`);
-            return res.status(500).send(`Compilation Error: ${e.message}`); 
-        }
-    }
-    next();
-});
 
 // *** Global Throttling for Sellfox API ***
 let lastSellfoxCallTime = 0;
@@ -757,19 +709,6 @@ app.post('/api/realtime/data', (req, res) => realtimeController.getRealTimeData(
 // *** NEW SALES STATISTICS ENDPOINT ***
 app.post('/api/sales/stat', (req, res) => salesController.getSalesStatData(pool, req, res));
 
-app.use(express.static(path.join(__dirname), { extensions: ['html', 'htm', 'js', 'css', 'json', 'png', 'jpg'] }));
-
-app.get('*', (req, res) => {
-    if (
-        req.path.startsWith('/api') || 
-        req.path.includes('.') || 
-        (req.headers.accept && !req.headers.accept.includes('text/html'))
-    ) {
-        return res.status(404).send('Not Found');
-    }
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
 // Removed Reconcile & Ant Mover Logic from Main Server
 
 (async () => {
@@ -778,6 +717,28 @@ app.get('*', (req, res) => {
     console.log("-----------------------------------------");
     
     await initDB();
+
+    // Vite Middleware Setup
+    if (process.env.NODE_ENV !== 'production') {
+        try {
+            const { createServer } = await import('vite');
+            const vite = await createServer({
+                server: { middlewareMode: true },
+                appType: 'spa',
+            });
+            app.use(vite.middlewares);
+            console.log("✅ Vite Middleware: Attached");
+        } catch (e) {
+            console.error("❌ Vite Middleware Error:", e);
+        }
+    } else {
+        // Production static files
+        app.use(express.static(path.join(__dirname, 'dist')));
+        app.get('*', (req, res) => {
+             if (req.path.startsWith('/api')) return res.status(404).send('Not Found');
+             res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+        });
+    }
 
     // NEW: Auto-Repair Missing Data on Startup (Async/Background)
     // Non-blocking approach to ensure fast server startup
