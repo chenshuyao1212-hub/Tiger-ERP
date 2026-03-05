@@ -69,6 +69,10 @@
     - **Change**: Implemented dynamic table rendering based on `activeTab` (ASIN, MSKU, 父ASIN) and `activeMetric` (销量, 销售额, 订单量).
     - **Change**: Added loading and empty states handling.
     - **Change**: Integrated pagination with backend `totalSize`.
+- **Q20260304V1**: **Frontend Build System Refactor**.
+    - **Change**: Removed `importmap` from `index.html` to resolve dependency loading issues.
+    - **Change**: Switched to standard Vite-based dependency management (ESM) for better compatibility and stability.
+    - **Change**: Updated `package.json` scripts to align with the new server-driven development workflow.
 
 ## Backend Versions
 - **H20260119V1**: Initial implementation of RealTime controller and API endpoints.
@@ -158,3 +162,8 @@
     - **Logic**: Handles filtering by date range, dimensions (ASIN, MSKU, 父ASIN), metrics, and search terms. Returns structured data including trend charts, summary, and daily details.
 - **H20260119V33**: **Fixed Server Startup Crash**.
     - **Fix**: Resolved `MODULE_NOT_FOUND` error in `server.js` by updating the reference from the deleted `controllers/salesStat.js` to the correct `controllers/sales.js` controller.
+- **H20260304V1**: **Server Architecture Refactor**.
+    - **Change**: Replaced manual `esbuild` middleware with official `vite` middleware for robust development environment support.
+    - **Change**: Unified frontend and backend serving logic in `server.js`.
+    - **Change**: Fixed static file serving configuration for production builds.
+    - **Change**: Cleaned up `package.json` scripts to prevent port conflicts and ensure single-entry-point startup.

@@ -518,6 +518,95 @@ export const SalesStat = () => {
   const [pageNo, setPageNo] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
+  const [isAsinGrouped, setIsAsinGrouped] = useState(true);
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
+
+  // Group Data by ASIN if enabled
+  const groupedData = useMemo(() => {
+      if (!isAsinGrouped || activeTab !== 'ASIN') return data;
+
+      const groups: Record<string, any> = {};
+      
+      data.forEach(item => {
+          const key = item.asin;
+          if (!groups[key]) {
+              groups[key] = {
+                  ...item,
+                  id: `group-${key}`,
+                  isGroup: true,
+                  children: [],
+                  // Aggregate numeric fields
+                  fbaSales: 0,
+                  fbaTotal: 0,
+                  subtotal: 0,
+                  avg: 0,
+                  daily: new Array(item.daily.length).fill(0),
+                  trendData: new Array(item.trendData.length).fill(0),
+                  site: '多店铺汇总', // Placeholder for group row
+                  siteCode: '',
+                  shop: ''
+              };
+          }
+          
+          // Add to children
+          groups[key].children.push(item);
+
+          // Aggregate values
+          groups[key].fbaSales += item.fbaSales || 0;
+          groups[key].fbaTotal += item.fbaTotal || 0;
+          groups[key].subtotal += item.subtotal || 0;
+          
+          // Aggregate arrays (daily & trend)
+          item.daily.forEach((val: number, idx: number) => {
+              if (groups[key].daily[idx] !== undefined) groups[key].daily[idx] += val;
+          });
+          item.trendData.forEach((val: number, idx: number) => {
+              if (groups[key].trendData[idx] !== undefined) groups[key].trendData[idx] += val;
+          });
+      });
+
+      // Finalize averages and convert to array
+      return Object.values(groups).map((group: any) => {
+          // Recalculate average based on aggregated subtotal and daily count (if needed)
+          // For simplicity, let's just average the averages or re-compute
+          // Avg = Total Sales / Days? Or just sum of averages? 
+          // Usually Avg Price = Total Revenue / Total Units. 
+          // Here 'avg' seems to be average daily sales or price? 
+          // If it's average daily sales: Total Sales / Days.
+          // If it's average price: We need revenue. 
+          // Let's assume 'avg' in mock data is Average Daily Sales for now based on context '7天销量趋势/均值'.
+          // So Avg = Subtotal / 7 (or relevant days).
+          group.avg = group.subtotal / (group.daily.length || 1); 
+          return group;
+      });
+  }, [data, isAsinGrouped, activeTab]);
+
+  const toggleRow = (id: string) => {
+      const newSet = new Set(expandedRowIds);
+      if (newSet.has(id)) {
+          newSet.delete(id);
+      } else {
+          newSet.add(id);
+      }
+      setExpandedRowIds(newSet);
+  };
+
+  // Flatten data for rendering (insert children after expanded parents)
+  const displayData = useMemo(() => {
+      if (!isAsinGrouped || activeTab !== 'ASIN') return data;
+      
+      const result: any[] = [];
+      groupedData.forEach((group: any) => {
+          result.push(group);
+          if (expandedRowIds.has(group.id)) {
+              group.children.forEach((child: any) => {
+                  result.push({ ...child, isChild: true });
+              });
+          }
+      });
+      return result;
+  }, [groupedData, expandedRowIds, isAsinGrouped, activeTab, data]);
+
   // Fetch Data from API
   const fetchData = async () => {
     setLoading(true);
@@ -771,7 +860,12 @@ export const SalesStat = () => {
                {activeTab === 'ASIN' && (
                    <>
                       <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">
-                          <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" defaultChecked /> 
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-gray-300 text-blue-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer" 
+                            checked={isAsinGrouped}
+                            onChange={(e) => setIsAsinGrouped(e.target.checked)}
+                          /> 
                           <span>按ASIN汇总</span>
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer hover:text-blue-600 transition-colors">

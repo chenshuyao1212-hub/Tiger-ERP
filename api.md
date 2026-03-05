@@ -137,7 +137,14 @@ The backend wraps CaiGou API calls to handle token management securely.
 *   **GET /api/common/statuses**: Returns list of order statuses (Pending, Shipped, etc.).
 *   **GET /api/common/delivery-methods**: Returns delivery methods (FBA, FBM).
 
-### 3.7 Dashboard Data (Mock)
+### 3.8 Orders Management (New)
+*   **POST /api/orders/sync**: Trigger a full order synchronization.
+*   **POST /api/orders/sync-batch**: Trigger a batch synchronization for specific order IDs (used for "Hot Sync").
+*   **GET /api/orders/last-sync**: Get the timestamp of the last successful synchronization.
+*   **POST /api/orders/note**: Update the note for a specific order.
+*   **POST /api/orders/db/list**: Retrieve orders directly from the local database (supports advanced filtering and pagination).
+
+### 3.9 Dashboard Data (Mock)
 *   **GET /api/dashboard/overview**: Returns KPI cards and sales chart data.
 *   **GET /api/dashboard/ranking**: Returns top product ranking list.
 *   **GET /api/dashboard/tasks**: Returns pending tasks and announcements.
