@@ -156,3 +156,5 @@
 - **H20260119V32**: **Sales Statistics API Implementation**.
     - **Feature**: Implemented `/api/sales/stat` endpoint to serve data for the Sales Statistics page.
     - **Logic**: Handles filtering by date range, dimensions (ASIN, MSKU, 父ASIN), metrics, and search terms. Returns structured data including trend charts, summary, and daily details.
+- **H20260119V33**: **Fixed Server Startup Crash**.
+    - **Fix**: Resolved `MODULE_NOT_FOUND` error in `server.js` by updating the reference from the deleted `controllers/salesStat.js` to the correct `controllers/sales.js` controller.
