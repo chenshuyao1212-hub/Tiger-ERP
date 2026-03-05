@@ -115,7 +115,10 @@ exports.getSalesStatData = async (pool, req, res) => {
         const end = new Date(endDate);
         const dailyCols = [];
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
             dailyCols.push(`
                 JSON_OBJECT(
                     'day', '${dateStr}',
