@@ -73,6 +73,17 @@
     - **Change**: Removed `importmap` from `index.html` to resolve dependency loading issues.
     - **Change**: Switched to standard Vite-based dependency management (ESM) for better compatibility and stability.
     - **Change**: Updated `package.json` scripts to align with the new server-driven development workflow.
+- **Q20260306V1**: **AI Concurrency Control Implementation**.
+    - **Change**: Installed `p-limit` and `@google/genai` dependencies.
+    - **Change**: Created `src/services/aiService.ts` to encapsulate Gemini API calls.
+    - **Change**: Implemented `pLimit(3)` to strictly control concurrent requests to Gemini API, resolving potential rate limit issues during high-load operations.
+- **Q20260306V2**: **Sales Statistics Pseudo-Tree Implementation**.
+    - **Change**: Implemented frontend-side grouping by ASIN to create a collapsible tree structure.
+    - **Change**: Added `expandedRows` state and `toggleRow` function to manage row expansion.
+    - **Change**: Updated table rendering to support summary rows with aggregate data and expandable detail rows.
+- **Q20260306V3**: **API Key Quota Resolution**.
+    - **Change**: Added "Switch API Key" button to the top header.
+    - **Change**: Integrated `window.aistudio.openSelectKey()` to allow users to switch projects when quota is exhausted.
 
 ## Backend Versions
 - **H20260119V1**: Initial implementation of RealTime controller and API endpoints.

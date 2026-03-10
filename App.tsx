@@ -227,6 +227,21 @@ const App = () => {
               )}
             </div>
 
+            <button 
+              onClick={async () => {
+                if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
+                  await (window as any).aistudio.openSelectKey();
+                } else {
+                  alert('当前环境不支持切换 API Key');
+                }
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 rounded text-[11px] text-blue-200 hover:text-white transition-all mr-2"
+              title="如果遇到生成次数限制，请点击此处切换 API Key"
+            >
+              <RefreshCw size={12} />
+              <span>切换项目/Key</span>
+            </button>
+
             <button className="p-1.5 hover:bg-slate-700 rounded text-slate-300">
               <Search size={16} />
             </button>

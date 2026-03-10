@@ -540,7 +540,21 @@ export const SalesStat = () => {
   const [loading, setLoading] = useState(false);
   const [totalSize, setTotalSize] = useState(0);
   const [pageNo, setPageNo] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(100);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Toggle row expansion
+  const toggleRow = (asin: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(asin)) {
+        next.delete(asin);
+      } else {
+        next.add(asin);
+      }
+      return next;
+    });
+  };
 
   // Fetch Data from API
   const fetchData = async () => {
@@ -574,7 +588,7 @@ export const SalesStat = () => {
       const response = await axios.post('/api/sales/stat', payload);
       if (response.data.code === 0) {
         // Transform backend data to match frontend structure
-        const transformedData = response.data.data.rows.map((row: any, index: number) => {
+        const rawData = response.data.data.rows.map((row: any, index: number) => {
           // Extract daily values based on the active metric
           const dailyValues = row.productSaleDayOpenVo.map((dayData: any) => {
             if (activeMetric === 'orders') return dayData.orderNum;
@@ -615,7 +629,47 @@ export const SalesStat = () => {
           };
         });
 
-        setData(transformedData);
+        // Group by ASIN if activeTab === 'ASIN'
+        let finalData = rawData;
+        if (activeTab === 'ASIN') {
+          const asinGroups = new Map<string, any[]>();
+          rawData.forEach((item: any) => {
+            if (!asinGroups.has(item.asin)) {
+              asinGroups.set(item.asin, []);
+            }
+            asinGroups.get(item.asin)!.push(item);
+          });
+
+          finalData = [];
+          asinGroups.forEach((items, asin) => {
+            if (items.length === 1) {
+              finalData.push({ ...items[0], isGroup: false });
+            } else {
+              // Create summary row
+              const firstItem = items[0];
+              const summaryDaily = firstItem.daily.map((_: any, i: number) => 
+                items.reduce((sum: number, item: any) => sum + (item.daily[i] || 0), 0)
+              );
+              const summarySubtotal = items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
+              const summaryAvg = summaryDaily.length > 0 ? summarySubtotal / summaryDaily.length : 0;
+              const summaryTrend = summaryDaily.slice(-7);
+
+              const summaryRow = {
+                ...firstItem,
+                id: `summary-${asin}`,
+                isGroup: true,
+                subtotal: Number(summarySubtotal.toFixed(2)),
+                avg: Number(summaryAvg.toFixed(2)),
+                daily: summaryDaily,
+                trendData: summaryTrend.length > 0 ? summaryTrend : [0],
+                children: items.map((item: any) => ({ ...item, isChild: true }))
+              };
+              finalData.push(summaryRow);
+            }
+          });
+        }
+
+        setData(finalData);
         setTotalSize(response.data.data.totalSize);
       } else {
         console.error("Failed to fetch sales stat:", response.data.msg);
@@ -969,21 +1023,35 @@ export const SalesStat = () => {
              </tr>
            </thead>
            <tbody className="text-gray-700">
-             {data.map((item: any, idx: number) => (
-               <tr key={idx} className="hover:bg-blue-50 transition-colors group">
+              {data.flatMap((item: any) => {
+                const rows = [item];
+                if (item.isGroup && expandedRows.has(item.asin)) {
+                  rows.push(...item.children);
+                }
+                return rows;
+              }).map((item: any, idx: number) => (
+                <tr key={item.id || idx} className={`${item.isChild ? 'bg-gray-50/50' : 'bg-white'} hover:bg-blue-50 transition-colors group`}>
                  {/* --- Fixed Columns Logic --- */}
                  {activeTab === 'ASIN' ? (
                      <>
-                        <td className="p-2 text-center text-gray-400 cursor-pointer sticky left-0 bg-white z-20 border-r border-b border-gray-100 group-hover:bg-blue-50">
-                            <Play size={8} className="rotate-0 text-gray-400 mx-auto" />
+                        <td 
+                          className={`p-2 text-center text-gray-400 cursor-pointer sticky left-0 z-20 border-r border-b border-gray-100 group-hover:bg-blue-50 ${item.isChild ? 'bg-gray-50/50' : 'bg-white'}`}
+                          onClick={() => item.isGroup && toggleRow(item.asin)}
+                        >
+                             {item.isGroup ? (
+                               <Play 
+                                 size={8} 
+                                 className={`text-gray-400 mx-auto transition-transform ${expandedRows.has(item.asin) ? 'rotate-90 text-blue-500' : 'rotate-0'}`} 
+                               />
+                             ) : null}
                         </td>
-                        <td className="p-2 sticky left-8 bg-white z-20 border-r border-b border-gray-100 group-hover:bg-blue-50">
+                        <td className={`p-2 sticky left-8 z-20 border-r border-b border-gray-100 group-hover:bg-blue-50 ${item.isChild ? 'bg-gray-50/50' : 'bg-white'}`}>
                             <img src={item.img} className="w-8 h-8 object-cover rounded border border-gray-200" alt="" />
                         </td>
-                        <td className="p-2 sticky left-[72px] bg-white z-20 w-24 border-r border-b border-gray-100 group-hover:bg-blue-50">
+                        <td className={`p-2 sticky left-[72px] z-20 w-24 border-r border-b border-gray-100 group-hover:bg-blue-50 ${item.isChild ? 'bg-gray-50/50 pl-4' : 'bg-white'}`}>
                             <div className="text-blue-600 hover:underline cursor-pointer font-bold">{item.asin}</div>
                         </td>
-                        <td className="p-2 sticky left-[168px] bg-white z-20 w-32 border-b border-gray-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)] group-hover:bg-blue-50">
+                        <td className={`p-2 sticky left-[168px] z-20 w-32 border-b border-gray-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)] group-hover:bg-blue-50 ${item.isChild ? 'bg-gray-50/50' : 'bg-white'}`}>
                             <div className="text-blue-600 hover:underline cursor-pointer truncate max-w-[100px]" title={item.site}>{item.site}</div>
                             <div className="flex items-center gap-1 mt-0.5">
                                 <img src={`https://picsum.photos/20/20?random=${idx}`} className="w-3 h-3 rounded-full" />
